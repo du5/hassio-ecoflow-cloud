@@ -102,11 +102,16 @@ def _module_label(module_type: str) -> str:
     return _MODULE_LABELS.get(module_type, module_type)
 
 
+# The two battery packs EcoFlow sells for the Power Kits, by the module type they report
+_BATTERY_MODELS = {
+    "bp5000": "磷酸铁锂电池5度电 (LFP Battery 5kWh)",  # 51.2 V / 100 Ah
+    "bp2000": "磷酸铁锂电池2度电 (LFP Battery 2kWh)",  # 51.2 V / 40 Ah
+}
+
+
 def _module_model(module_type: str) -> str:
     if module_type.startswith("bp"):
-        # bp5000 is the 5 kWh pack, bp2000 the 2 kWh one
-        capacity = module_type[2:]
-        return f"磷酸铁锂电池 {capacity[:1]}kWh (LFP Battery)" if capacity.isdigit() else "磷酸铁锂电池 (LFP Battery)"
+        return _BATTERY_MODELS.get(module_type, "磷酸铁锂电池 (LFP Battery)")
     return _MODULE_MODELS.get(module_type, module_type)
 
 
