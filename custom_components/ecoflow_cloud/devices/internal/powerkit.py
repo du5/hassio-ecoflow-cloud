@@ -182,9 +182,13 @@ class PowerKit(PublicPowerKit):
 
         quota_map = reply.get("quotaMap")
         if self.is_hub:
-            fields = hub_quota_fields(quota_map, self.device_data.sn)
-        else:
-            fields = module_quota_fields(quota_map, self.device_data.device_type, self.module_sn)
+            return PreparedData(online, {"params": hub_quota_fields(quota_map, self.device_data.sn)}, data)
+
+        fields = module_quota_fields(quota_map, self.device_data.device_type, self.module_sn)
+        if not fields:
+            # the hub is online but does not report this module (disconnected battery, unplugged
+            # panel): neither the status nor the stale readings must look fresh
+            return PreparedData(None, None, data)
         return PreparedData(online, {"params": fields}, data)
 
     # -------------------------------------------------------------- commands

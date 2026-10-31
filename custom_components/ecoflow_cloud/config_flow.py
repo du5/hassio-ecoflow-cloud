@@ -27,6 +27,7 @@ from custom_components.ecoflow_cloud import (
     CONF_DEVICE_NAME,
     CONF_DEVICE_TYPE,
     CONF_GROUP,
+    CONF_IGNORED_MODULES,
     CONF_PARENT_SN,
     CONF_PASSWORD,
     CONF_SECRET_KEY,
@@ -94,6 +95,8 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
         self.cloud_device = None
         self.cloud_devices: dict[str, EcoflowDeviceInfo] = {}
         self.local_devices: dict[str, DeviceData] = {}
+        # serials of the devices added in this flow; their module discovery is expected to succeed
+        self.added_devices: set[str] = set()
 
     def set_current_config_entry(self, config_entry: ConfigEntry) -> None:
         self.config_entry = config_entry
@@ -108,8 +111,9 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
         for device in devices:
             self.local_devices[f"{device.name} ({device.sn})"] = device
 
-    async def update_or_create(self):
-        await self._discover_sub_devices()
+    async def update_or_create(self, discover: bool = True):
+        if discover:
+            await self._discover_sub_devices()
 
         if self.config_entry:  # reconfig flow
             _LOGGER.info(
@@ -141,22 +145,21 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
             )
 
     async def _discover_sub_devices(self) -> None:
-        """Add the modules of every newly added multi-module device (Power Kits) as sub devices.
+        """Add the modules of every multi-module device (Power Kits) that are not configured yet.
 
-        Runs for the create and the reconfigure flow alike. A device whose modules were
-        discovered earlier is left alone, so re-running the flow never duplicates or
-        renames existing sub devices.
+        Runs for the create and the reconfigure flow alike, except right after a removal.
+        Configured sub devices keep their names and options, modules removed through the
+        remove-device flow stay removed (their parent remembers them), and a module that was
+        offline at an earlier discovery is added as soon as the hub reports it.
         """
+        from .devices.internal.powerkit_data import SN_TYPE_SEPARATOR, real_sn
         from .devices.registry import device_support_sub_devices
 
         device_list = self.new_data.get(CONF_DEVICE_LIST, {})
-        parents_with_children = {d[CONF_PARENT_SN] for d in device_list.values() if CONF_PARENT_SN in d}
 
         # iterate over a snapshot: the loop mutates new_data[CONF_DEVICE_LIST]
         for sn, device_data in list(device_list.items()):
             if device_data[CONF_DEVICE_TYPE] not in device_support_sub_devices or CONF_PARENT_SN in device_data:
-                continue
-            if sn in parents_with_children:
                 continue
 
             try:
@@ -165,10 +168,16 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
                 _LOGGER.exception("Module discovery for %s failed; reconfigure the integration to retry", sn)
                 continue
             if not discovered:
-                _LOGGER.warning("No modules reported for %s; is it online? Reconfigure the integration to retry", sn)
+                if sn in self.added_devices:
+                    _LOGGER.warning(
+                        "No modules reported for %s; is it online? Reconfigure the integration to retry", sn
+                    )
                 continue
 
-            from .devices.internal.powerkit_data import SN_TYPE_SEPARATOR
+            configured = {
+                (d[CONF_DEVICE_TYPE], real_sn(key)) for key, d in device_list.items() if d.get(CONF_PARENT_SN) == sn
+            }
+            ignored = set(device_data.get(CONF_IGNORED_MODULES, []))
 
             # some modules (e.g. "wireless") report under the parent's serial; skip
             # those to avoid overwriting the parent device entry
@@ -179,12 +188,15 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
                 key = sub_device_sn
                 if serial_count[sub_device_sn] > 1:
                     key = f"{sub_device_sn}{SN_TYPE_SEPARATOR}{sub_device_type}"
+                if (sub_device_type, sub_device_sn) in configured or key in ignored or sub_device_sn in ignored:
+                    continue
                 self.new_data[CONF_DEVICE_LIST][key] = {
                     CONF_DEVICE_NAME: f"{device_data[CONF_DEVICE_NAME]}.{sub_device_type}.{sub_device_sn}",
                     CONF_DEVICE_TYPE: sub_device_type,
                     CONF_PARENT_SN: sn,
                 }
                 self.new_options[CONF_DEVICE_LIST][key] = dict(self.new_options[CONF_DEVICE_LIST][sn])
+                _LOGGER.info("Added module %s (%s) of %s", sub_device_sn, sub_device_type, sn)
 
     async def _discover_modules(self, sn: str) -> list[tuple[str, str]]:
         """``(module_type, module_sn)`` of a multi-module device, from whichever API the flow is logged in to."""
@@ -435,6 +447,7 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
             CONF_DEVICE_NAME: user_input[CONF_DEVICE_NAME],
             CONF_DEVICE_TYPE: user_input[CONF_DEVICE_TYPE],
         }
+        self.added_devices.add(sn)
         self.new_options[CONF_DEVICE_LIST][sn] = {
             OPTS_REFRESH_PERIOD_SEC: DEFAULT_REFRESH_PERIOD_SEC,
             OPTS_POWER_STEP: device.default_charging_power_step(),
@@ -497,11 +510,30 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
                 data_schema=vol.Schema({vol.Required(CONF_SELECT_DEVICE_KEY): vol.In(list(self.local_devices))}),
             )
         target_device = self.local_devices[user_input[CONF_SELECT_DEVICE_KEY]]
-        if target_device.sn in self.new_data[CONF_DEVICE_LIST]:
-            self.new_data[CONF_DEVICE_LIST].pop(target_device.sn)
+        device_list = self.new_data[CONF_DEVICE_LIST]
+        # a multi-module device takes its modules with it; a module left behind would point to a
+        # missing parent and keep the whole entry from loading
+        removed = [target_device.sn] + [
+            key for key, data in device_list.items() if data.get(CONF_PARENT_SN) == target_device.sn
+        ]
+        if len([key for key in device_list if key not in removed]) < 1:
+            return self.async_abort(reason="remove_last_device")
 
-        self.remove_device(target_device.sn)
-        return await self.update_or_create()
+        for key in removed:
+            device_list.pop(key, None)
+            self.new_options.get(CONF_DEVICE_LIST, {}).pop(key, None)
+            self.remove_device(key)
+
+        # a removed module stays removed: its parent remembers it across discoveries
+        parent_data = device_list.get(target_device.parent.sn) if target_device.parent is not None else None
+        if parent_data is not None:
+            ignored = list(parent_data.get(CONF_IGNORED_MODULES, []))
+            if target_device.sn not in ignored:
+                ignored.append(target_device.sn)
+            parent_data[CONF_IGNORED_MODULES] = ignored
+
+        # no discovery here: it would add the module just removed straight back
+        return await self.update_or_create(discover=False)
 
     async def async_step_select_device(self, user_input: dict[str, Any] | None = None):
         if not user_input:
@@ -558,6 +590,7 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
             CONF_DEVICE_NAME: user_input[CONF_DEVICE_NAME],
             CONF_DEVICE_TYPE: user_input[CONF_DEVICE_TYPE],
         }
+        self.added_devices.add(sn)
         self.new_options[CONF_DEVICE_LIST][sn] = {
             OPTS_REFRESH_PERIOD_SEC: DEFAULT_REFRESH_PERIOD_SEC,
             OPTS_POWER_STEP: device.default_charging_power_step(),
