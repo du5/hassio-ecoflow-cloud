@@ -19,9 +19,10 @@ Where a switch reads its state from one module but the command goes to another
 switch lives on the module that reports the state and addresses the sibling
 module in the command.
 
-The commands for the main DC output, DC input charging, the solar ports, the
-battery SOC limits, AC charging and the DC circuits were captured from the
-EcoFlow app talking to a 2nd-generation hub; they differ from the 1st-generation
+The commands for the main DC output, the three DC charging ports (ALT IN n / PV
+IN n: charging on/off and the auto / alternator / solar mode), the battery SOC
+limits, AC charging and the DC circuits were captured from the EcoFlow app
+talking to a 2nd-generation hub; they differ from the 1st-generation
 documentation in places (module types 15363 and 15368). AC output, the charge
 current, grid priority and the beeper reuse the same message families and are
 not captured yet.
@@ -31,6 +32,7 @@ import logging
 from typing import Any, override
 
 from homeassistant.components.number import NumberEntity
+from homeassistant.components.select import SelectEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfFrequency, UnitOfPower
@@ -54,6 +56,7 @@ from custom_components.ecoflow_cloud.number import (
     MaxBatteryLevelEntity,
     MinBatteryLevelEntity,
 )
+from custom_components.ecoflow_cloud.select import DictSelectEntity
 from custom_components.ecoflow_cloud.sensor import (
     AmpSensorEntity,
     CapacitySensorEntity,
@@ -84,6 +87,11 @@ DC_PANEL_MODULE_TYPE = 15368  # lddc
 NO_MODULE_SN = "0000000000000000"
 
 DC_PANEL_CHANNELS = 16  # F1 to F16 on the 2nd generation panel
+
+# DC charging mode of the ALT IN n / PV IN n ports: port 1 is bbcin, ports 2 and 3 the two MPPT inputs
+_PORT_MODES = {"Auto": 0, "Alternator": 1, "Solar": 2}
+# alternator type on port 1; with a 48 V excited alternator the port cannot discharge in reverse
+_ALTERNATOR_TYPES = {"Generic": 0, "48V Excited": 1}
 DC_PANEL_SWITCHES = 12  # channels in the dcChRelay bitmask; dcChRelayV2 carries the remaining four
 
 # the app sends every parameter of a group and marks the unchanged ones
@@ -463,7 +471,7 @@ class PowerKit(PublicPowerKit):
                     client,
                     self,
                     "mppt1SwSta",
-                    "Solar (2) Charging",
+                    "Port 2 Charging",
                     lambda value: self._module_command(
                         MPPT_MODULE_TYPE, "pvSwitch", {**_PV_PARAMS, "mpptt1": 1 if value == 1 else 0}
                     ),
@@ -473,7 +481,7 @@ class PowerKit(PublicPowerKit):
                     client,
                     self,
                     "mppt2SwSta",
-                    "Solar (3) Charging",
+                    "Port 3 Charging",
                     lambda value: self._module_command(
                         MPPT_MODULE_TYPE, "pvSwitch", {**_PV_PARAMS, "mpptt2": 1 if value == 1 else 0}
                     ),
@@ -482,12 +490,12 @@ class PowerKit(PublicPowerKit):
             ]
         if module_type == "bbcin":
             return [
-                # chgPause 1 pauses charging from the alternator / generator input
+                # chgPause 1 pauses charging from port 1 (ALT IN 1 / PV IN 1)
                 EnabledEntity(
                     client,
                     self,
                     "chgPause",
-                    "DC Input Charging",
+                    "Port 1 Charging",
                     lambda value: self._module_command(
                         DC_IN_MODULE_TYPE, "chgParaSet", {**_DC_IN_PARAMS, "chgPause": 0 if value == 0 else 1}
                     ),
@@ -545,6 +553,57 @@ class PowerKit(PublicPowerKit):
             ]
             return switches
         return super().switches(client)
+
+    @override
+    def selects(self, client: EcoflowApiClient) -> list[SelectEntity]:
+        module_type = self.device_data.device_type
+        if module_type == "bbcin":
+            return [
+                DictSelectEntity(
+                    client,
+                    self,
+                    "setPortType",
+                    "Port 1 Charging Mode",
+                    _PORT_MODES,
+                    lambda value: self._module_command(
+                        DC_IN_MODULE_TYPE, "chgParaSet", {**_DC_IN_PARAMS, "setPortType": value}
+                    ),
+                ),
+                DictSelectEntity(
+                    client,
+                    self,
+                    "alternatorMode",
+                    "Port 1 Alternator Type",
+                    _ALTERNATOR_TYPES,
+                    lambda value: self._module_command(
+                        DC_IN_MODULE_TYPE, "chgDsgAltmodeSet", {"rsvd": ["0"] * 20, "alternatorMode": value}
+                    ),
+                ),
+            ]
+        if module_type == "kitscc":
+            return [
+                DictSelectEntity(
+                    client,
+                    self,
+                    "setPort1Type",
+                    "Port 2 Charging Mode",
+                    _PORT_MODES,
+                    lambda value: self._module_command(
+                        MPPT_MODULE_TYPE, "pvSwitch", {**_PV_PARAMS, "setPort1Type": value}
+                    ),
+                ),
+                DictSelectEntity(
+                    client,
+                    self,
+                    "setPort2Type",
+                    "Port 3 Charging Mode",
+                    _PORT_MODES,
+                    lambda value: self._module_command(
+                        MPPT_MODULE_TYPE, "pvSwitch", {**_PV_PARAMS, "setPort2Type": value}
+                    ),
+                ),
+            ]
+        return super().selects(client)
 
     @override
     def numbers(self, client: EcoflowApiClient) -> list[NumberEntity]:

@@ -63,7 +63,11 @@
 - Input Port Type (`setPortType`)   _(disabled)_
 
 *Switches*
-- DC Input Charging (`chgPause` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chgParaSet", "params": {"chgPause": 1, "maxChgCurr": -1, "altCableLen": -1, "altCableUnit": 255, "altVoltLmt": 65535, "altVoltLmtEn": 255, "shakeCtrlDisable": 255, "setPortType": 255}}`)
+- Port 1 Charging (`chgPause` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chgParaSet", "params": {"chgPause": 1, "maxChgCurr": -1, "altCableLen": -1, "altCableUnit": 255, "altVoltLmt": 65535, "altVoltLmtEn": 255, "shakeCtrlDisable": 255, "setPortType": 255}}`)
+
+*Selects*
+- Port 1 Charging Mode (`setPortType` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chgParaSet", "params": {"chgPause": 255, "maxChgCurr": -1, "altCableLen": -1, "altCableUnit": 255, "altVoltLmt": 65535, "altVoltLmtEn": 255, "shakeCtrlDisable": 255, "setPortType": "VALUE"}}` [Auto (0), Alternator (1), Solar (2)])
+- Port 1 Alternator Type (`alternatorMode` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chgDsgAltmodeSet", "params": {"rsvd": ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"], "alternatorMode": "VALUE"}}` [Generic (0), 48V Excited (1)])
 
 ### bbcout
 
@@ -170,8 +174,12 @@
 - Solar Energy for Day (`dayEnergy`)   _(disabled)_
 
 *Switches*
-- Solar (2) Charging (`mppt1SwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 0, "mpptt2": 255, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": 255, "setPort2Type": 255}}`)
-- Solar (3) Charging (`mppt2SwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 255, "mpptt2": 0, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": 255, "setPort2Type": 255}}`)
+- Port 2 Charging (`mppt1SwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 0, "mpptt2": 255, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": 255, "setPort2Type": 255}}`)
+- Port 3 Charging (`mppt2SwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 255, "mpptt2": 0, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": 255, "setPort2Type": 255}}`)
+
+*Selects*
+- Port 2 Charging Mode (`setPort1Type` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 255, "mpptt2": 255, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": "VALUE", "setPort2Type": 255}}` [Auto (0), Alternator (1), Solar (2)])
+- Port 3 Charging Mode (`setPort2Type` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 255, "mpptt2": 255, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": 255, "setPort2Type": "VALUE"}}` [Auto (0), Alternator (1), Solar (2)])
 
 ### lddc
 

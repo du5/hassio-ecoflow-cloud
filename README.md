@@ -1789,7 +1789,7 @@ from Home Assistant.
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 218, switches: 24, sliders: 3)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 218, switches: 24, sliders: 3, selects: 4)</i> </summary>
 <p>
 
 ### hub
@@ -1855,7 +1855,11 @@ from Home Assistant.
 - Input Port Type  _(disabled)_
 
 *Switches*
-- DC Input Charging
+- Port 1 Charging
+
+*Selects*
+- Port 1 Charging Mode
+- Port 1 Alternator Type
 
 ### bbcout
 
@@ -1962,8 +1966,12 @@ from Home Assistant.
 - Solar Energy for Day  _(disabled)_
 
 *Switches*
-- Solar (2) Charging
-- Solar (3) Charging
+- Port 2 Charging
+- Port 3 Charging
+
+*Selects*
+- Port 2 Charging Mode
+- Port 3 Charging Mode
 
 ### lddc
 

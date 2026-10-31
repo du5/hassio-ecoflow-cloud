@@ -62,8 +62,8 @@ App 协议把一套系统拆成若干模块上报，每个模块在 Home Assista
 | `wireless` / `gps` | 主机本体 | M3H1 | 主机设备（总电量、总功率、总电流、剩余时间、充放电上下限、发电机启停电量） | 放电下限、充电上限滑块 |
 | `iclow` | 主机 逆变充电 电池侧（BMS） | M1095-PSDL | 系统电量、母线电压、电池电流、温度、保护状态 | 无（命令由它执行，开关放在 `ichigh`） |
 | `ichigh` | 主机 逆变充电 交流侧 | M1095-PSDH | 交流输出功率、电压、电流、频率、视在功率、市电输入、`appCfg` 当前设置 | 交流输出、交流充电、交流充电电流、市电优先 |
-| `kitscc` | 主机 MPPT 太阳能充电控制器 | M1096-MPPT | 两路 PV 功率、电压、电流、温度 | 两路太阳能充电开关 |
-| `bbcin` | 主机 DC-DC 电池充电器（车充 / 发电机输入） | M3593-DCIN | 直流输入功率、电压、电流、限流、模式 | 车充 / 发电机充电暂停开关 |
+| `kitscc` | 主机 MPPT 太阳能充电控制器，即端口 2、3（ALT IN 2/PV IN 2、ALT IN 3/PV IN 3） | M1096-MPPT | 两路功率、电压、电流、温度 | 端口 2、3 充电开关和充电模式 |
+| `bbcin` | 主机 DC-DC 电池充电器，即端口 1（ALT IN 1/PV IN 1，100 A） | M3593-DCIN | 直流输入功率、电压、电流、限流、模式 | 端口 1 充电开关和充电模式 |
 | `bbcout` | 主机 DC-DC 降压输出 | M3593-DCOU | 直流负载功率、电流、输出状态 | 主直流输出、蜂鸣器 |
 | `bp5000` | 磷酸铁锂电池 5kWh，每块一个设备 | M101Z | 电量、电压、电流、温度、循环、健康度、累计充放电量 | 无 |
 | `lddc` | 配电盘 直流回路 | M3L1 | 16 路功率、电流，温度，继电器位图 | 直流回路 F1–F16 开关 |
@@ -92,12 +92,18 @@ App 协议把一套系统拆成若干模块上报，每个模块在 Home Assista
 | 操作 | moduleSn | moduleType | operateType | 参数 |
 | --- | --- | --- | --- | --- |
 | 主直流输出 | bbcout | 15363 | dischgParaSet | `swSta` 1/0，其余字段 255 或 65535 表示不改 |
-| 车充 / 发电机充电 | bbcin | 15362 | chgParaSet | `chgPause` 1 暂停 / 0 恢复 |
-| 太阳能开关 | kitscc | 15364 | pvSwitch | `mpptt1` / `mpptt2` 1/0 |
+| 端口 1 充电 | bbcin | 15362 | chgParaSet | `chgPause` 1 暂停 / 0 恢复 |
+| 端口 1 充电模式 | bbcin | 15362 | chgParaSet | `setPortType` 0 自动 / 1 行车发电机 / 2 太阳能 |
+| 端口 1 发电机类型 | bbcin | 15362 | chgDsgAltmodeSet | `alternatorMode` 0 通用发电机 / 1 48V 励磁发电机，`rsvd` 为 20 个 "0" |
+| 端口 2、3 充电 | kitscc | 15364 | pvSwitch | `mpptt1` / `mpptt2` 1/0 |
+| 端口 2、3 充电模式 | kitscc | 15364 | pvSwitch | `setPort1Type` / `setPort2Type` 0 自动 / 1 行车发电机 / 2 太阳能 |
 | 交流充电 | iclow | 15365 | dischgIcParaSet | `acChgDisa` 1 禁止 / 0 允许 |
 | 放电下限 / 充电上限 | 0000000000000000 | 0 | socLowerLimit / socUpperLimit | `minDsgSoc` / `maxChgSoc` |
 | 直流回路 F1–F16 | 配电盘 | 15368 | chSwitch | `bitsSwSta`：开 128+序号-1，关 序号-1 |
 
+主机背面的三个直流充电口在 App 里叫端口 1、2、3，面板上印的是 ALT IN 1/PV IN 1 到 ALT IN 3/PV IN 3，每个端口可设为自动识别、行车发电机充电或太阳能充电。
+端口 1 对应 `bbcin` 模块，端口 2、3 对应 `kitscc` 的两路 MPPT，公共 API 版本把后两路叫作 Solar (2) 和 Solar (3)。
+端口 1 还能选发电机类型：通用发电机或 48V 励磁发电机。App 在切到 48V 励磁发电机时会提示 ALT1 口将无法使用反向放电功能，集成里的下拉框没有这个提示，切换前请知悉。
 与一代公开文档不同的地方：主直流输出发给 bbcout 而不是 bbcin，moduleType 是 15363；直流回路的 moduleType 是 15368。
 App 打开期间每 10 秒向 bbcout 发一条 `hubExitLsp: 1` 的 dischgParaSet 作为保活，集成没有模仿这一点。
 
