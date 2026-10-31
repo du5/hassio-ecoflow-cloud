@@ -19,6 +19,10 @@
 - GPS Connected (`gpsCon`)   _(disabled)_
 - Status
 
+*Sliders (numbers)*
+- Min Discharge Level (`bmsDsgDownline` -> `{"id": 123456789, "version": "1.0", "moduleSn": "0000000000000000", "moduleType": 0, "operateType": "socLowerLimit", "params": {"minDsgSoc": "VALUE"}}` [0 - 30])
+- Max Charge Level (`bmsChgUpline` -> `{"id": 123456789, "version": "1.0", "moduleSn": "0000000000000000", "moduleType": 0, "operateType": "socUpperLimit", "params": {"maxChgSoc": "VALUE"}}` [50 - 100])
+
 ### bbcin
 
 *Sensors*
@@ -58,6 +62,9 @@
 - Third Input Power (`thirdWatts`)   _(disabled)_
 - Input Port Type (`setPortType`)   _(disabled)_
 
+*Switches*
+- DC Input Charging (`chgPause` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chgParaSet", "params": {"chgPause": 1, "maxChgCurr": -1, "altCableLen": -1, "altCableUnit": 255, "altVoltLmt": 65535, "altVoltLmtEn": 255, "shakeCtrlDisable": 255, "setPortType": 255}}`)
+
 ### bbcout
 
 *Sensors*
@@ -75,7 +82,8 @@
 - DC Out Energy Today (`dayEnergy`)   _(disabled)_
 
 *Switches*
-- Main DC Output (`dcOutSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "dischgParaSet", "params": {"swSta": 0}}`)
+- Main DC Output (`dcOutSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15363, "operateType": "dischgParaSet", "params": {"swSta": 0, "beepEn": 255, "volTag": 255, "hubExitLsp": 255, "bbcInExitLsp": 255, "icExitLsp": 255, "sccExitLsp": 255, "noLoadPwr": 65535, "standbyTime": 65535}}`)
+- Beeper (`beepEn` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15363, "operateType": "dischgParaSet", "params": {"swSta": 255, "beepEn": 0, "volTag": 255, "hubExitLsp": 255, "bbcInExitLsp": 255, "icExitLsp": 255, "sccExitLsp": 255, "noLoadPwr": 65535, "standbyTime": 65535}}`)
 
 ### iclow
 
@@ -161,6 +169,10 @@
 - Solar Total Charge Current (`chgEnergy`)   _(disabled)_
 - Solar Energy for Day (`dayEnergy`)   _(disabled)_
 
+*Switches*
+- Solar (2) Charging (`mppt1SwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 0, "mpptt2": 255, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": 255, "setPort2Type": 255}}`)
+- Solar (3) Charging (`mppt2SwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15364, "operateType": "pvSwitch", "params": {"mpptt1": 255, "mpptt2": 0, "alt1CableLen": -1, "alt2CableLen": -1, "alt1CableUnit": 255, "alt2CableUnit": 255, "alt1VoltLmt": 65535, "alt2VoltLmt": 65535, "alt1VoltLmtEn": 255, "alt2VoltLmtEn": 255, "setPort1Type": 255, "setPort2Type": 255}}`)
+
 ### lddc
 
 *Sensors*
@@ -206,18 +218,22 @@
 - DC Out 13-16 Ch Relay (`dcChRelayV2`)   _(disabled)_
 
 *Switches*
-- DC Switch 1 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 2 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 3 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 4 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 5 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 6 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 7 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 8 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 9 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 10 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 11 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
-- DC Switch 12 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 1 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 2 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 3 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 4 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 5 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 6 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 7 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 8 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 9 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 10 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 11 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 12 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 13 (`dcChRelayV2` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 14 (`dcChRelayV2` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 15 (`dcChRelayV2` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 16 (`dcChRelayV2` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
 
 ### ichigh
 

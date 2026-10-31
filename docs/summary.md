@@ -1714,7 +1714,7 @@
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 218, switches: 16, sliders: 1)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 218, switches: 24, sliders: 3)</i> </summary>
 <p>
 
 ### hub
@@ -1735,6 +1735,10 @@
 - GPS Enabled  _(disabled)_
 - GPS Connected  _(disabled)_
 - Status
+
+*Sliders (numbers)*
+- Min Discharge Level
+- Max Charge Level
 
 ### bbcin
 
@@ -1775,6 +1779,9 @@
 - Third Input Power  _(disabled)_
 - Input Port Type  _(disabled)_
 
+*Switches*
+- DC Input Charging
+
 ### bbcout
 
 *Sensors*
@@ -1793,6 +1800,7 @@
 
 *Switches*
 - Main DC Output
+- Beeper
 
 ### iclow
 
@@ -1878,6 +1886,10 @@
 - Solar Total Charge Current  _(disabled)_
 - Solar Energy for Day  _(disabled)_
 
+*Switches*
+- Solar (2) Charging
+- Solar (3) Charging
+
 ### lddc
 
 *Sensors*
@@ -1935,6 +1947,10 @@
 - DC Switch 10
 - DC Switch 11
 - DC Switch 12
+- DC Switch 13
+- DC Switch 14
+- DC Switch 15
+- DC Switch 16
 
 ### ichigh
 

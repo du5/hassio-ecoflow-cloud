@@ -61,10 +61,11 @@ from Home Assistant.
 - 2nd generation Power Hub (5 kVA, listed by the developer platform without a product name, e.g. as
   `48V全场景电源（5kVA）`): the developer platform answers every data request for it with error 1006, so use
   `private_api` with the device type `POWER_KITS` instead. Its batteries, BMS, MPPT, inverter and distribution
-  panels are discovered as separate devices when the hub is added. The switches and sliders reuse the commands
-  EcoFlow documents for the 1st generation and have not been confirmed on a 2nd generation hub yet. On the 2nd
-  generation AC/DC panel (EF-PK-005-2) DC circuits 1 to 12 are switchable, circuits 13 to 16 are read-only until
-  their command is known, and the AC branch circuits are breakers that cannot be switched remotely.
+  panels are discovered as separate devices when the hub is added. The commands for the main DC output, DC input
+  charging, the solar ports, the battery SOC limits, AC charging and the 16 DC circuits of the AC/DC panel
+  (EF-PK-005-2) were captured from the EcoFlow app on a 2nd generation hub; AC output, the charge current, grid
+  priority and the beeper reuse the same message families and are not confirmed yet. The AC branch circuits are
+  breakers that cannot be switched remotely.
   Component names, specifications, module map and units of the 2nd generation kit:
   [docs/power_kits_2nd_gen.md](docs/power_kits_2nd_gen.md).
 
@@ -1788,7 +1789,7 @@ from Home Assistant.
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 218, switches: 16, sliders: 1)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 218, switches: 24, sliders: 3)</i> </summary>
 <p>
 
 ### hub
@@ -1809,6 +1810,10 @@ from Home Assistant.
 - GPS Enabled  _(disabled)_
 - GPS Connected  _(disabled)_
 - Status
+
+*Sliders (numbers)*
+- Min Discharge Level
+- Max Charge Level
 
 ### bbcin
 
@@ -1849,6 +1854,9 @@ from Home Assistant.
 - Third Input Power  _(disabled)_
 - Input Port Type  _(disabled)_
 
+*Switches*
+- DC Input Charging
+
 ### bbcout
 
 *Sensors*
@@ -1867,6 +1875,7 @@ from Home Assistant.
 
 *Switches*
 - Main DC Output
+- Beeper
 
 ### iclow
 
@@ -1952,6 +1961,10 @@ from Home Assistant.
 - Solar Total Charge Current  _(disabled)_
 - Solar Energy for Day  _(disabled)_
 
+*Switches*
+- Solar (2) Charging
+- Solar (3) Charging
+
 ### lddc
 
 *Sensors*
@@ -2009,6 +2022,10 @@ from Home Assistant.
 - DC Switch 10
 - DC Switch 11
 - DC Switch 12
+- DC Switch 13
+- DC Switch 14
+- DC Switch 15
+- DC Switch 16
 
 ### ichigh
 

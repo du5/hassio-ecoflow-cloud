@@ -17,8 +17,14 @@ modules.
 Where a switch reads its state from one module but the command goes to another
 (the public implementation left those switches without a readable state), the
 switch lives on the module that reports the state and addresses the sibling
-module in the command. Commands reuse the payloads EcoFlow documents for the 1st
-generation; they have not been confirmed on a 2nd-generation hub.
+module in the command.
+
+The commands for the main DC output, DC input charging, the solar ports, the
+battery SOC limits, AC charging and the DC circuits were captured from the
+EcoFlow app talking to a 2nd-generation hub; they differ from the 1st-generation
+documentation in places (module types 15363 and 15368). AC output, the charge
+current, grid priority and the beeper reuse the same message families and are
+not captured yet.
 """
 
 import logging
@@ -43,7 +49,11 @@ from custom_components.ecoflow_cloud.devices.internal.powerkit_data import (
 )
 from custom_components.ecoflow_cloud.devices.public.powerkit import BitMaskEnableEntity
 from custom_components.ecoflow_cloud.devices.public.powerkit import PowerKit as PublicPowerKit
-from custom_components.ecoflow_cloud.number import AcChargingPowerInAmpereEntity
+from custom_components.ecoflow_cloud.number import (
+    AcChargingPowerInAmpereEntity,
+    MaxBatteryLevelEntity,
+    MinBatteryLevelEntity,
+)
 from custom_components.ecoflow_cloud.sensor import (
     AmpSensorEntity,
     CapacitySensorEntity,
@@ -64,11 +74,56 @@ from custom_components.ecoflow_cloud.switch import EnabledEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-# moduleType values of the set commands, from EcoFlow's Power Kits documentation
-INVERTER_MODULE_TYPE = 15365
-DC_IN_MODULE_TYPE = 15362
+# moduleType values of the set commands, as the EcoFlow app sends them to a 2nd generation hub
+INVERTER_MODULE_TYPE = 15365  # iclow / ichigh
+DC_IN_MODULE_TYPE = 15362  # bbcin
+DC_OUT_MODULE_TYPE = 15363  # bbcout
+MPPT_MODULE_TYPE = 15364  # kitscc
+DC_PANEL_MODULE_TYPE = 15368  # lddc
+# commands the hub routes to the batteries itself carry no module serial
+NO_MODULE_SN = "0000000000000000"
 
-DC_PANEL_SWITCHES = 12  # relay channels in the panel's dcChRelay bitmask (F1 to F12 on the 2nd generation panel)
+DC_PANEL_CHANNELS = 16  # F1 to F16 on the 2nd generation panel
+DC_PANEL_SWITCHES = 12  # channels in the dcChRelay bitmask; dcChRelayV2 carries the remaining four
+
+# the app sends every parameter of a group and marks the unchanged ones
+_UNCHANGED = 255
+_UNCHANGED_WORD = 65535
+_DC_OUT_PARAMS = {
+    "swSta": _UNCHANGED,
+    "beepEn": _UNCHANGED,
+    "volTag": _UNCHANGED,
+    "hubExitLsp": _UNCHANGED,
+    "bbcInExitLsp": _UNCHANGED,
+    "icExitLsp": _UNCHANGED,
+    "sccExitLsp": _UNCHANGED,
+    "noLoadPwr": _UNCHANGED_WORD,
+    "standbyTime": _UNCHANGED_WORD,
+}
+_DC_IN_PARAMS = {
+    "chgPause": _UNCHANGED,
+    "maxChgCurr": -1,
+    "altCableLen": -1,
+    "altCableUnit": _UNCHANGED,
+    "altVoltLmt": _UNCHANGED_WORD,
+    "altVoltLmtEn": _UNCHANGED,
+    "shakeCtrlDisable": _UNCHANGED,
+    "setPortType": _UNCHANGED,
+}
+_PV_PARAMS = {
+    "mpptt1": _UNCHANGED,
+    "mpptt2": _UNCHANGED,
+    "alt1CableLen": -1,
+    "alt2CableLen": -1,
+    "alt1CableUnit": _UNCHANGED,
+    "alt2CableUnit": _UNCHANGED,
+    "alt1VoltLmt": _UNCHANGED_WORD,
+    "alt2VoltLmt": _UNCHANGED_WORD,
+    "alt1VoltLmtEn": _UNCHANGED,
+    "alt2VoltLmtEn": _UNCHANGED,
+    "setPort1Type": _UNCHANGED,
+    "setPort2Type": _UNCHANGED,
+}
 
 _MODULE_LABELS = {
     "iclow": "BMS",
@@ -128,6 +183,15 @@ class TotalCurrentSensorEntity(AmpSensorEntity):
 class PowerKit(PublicPowerKit):
     def __init__(self, device_info: EcoflowDeviceInfo, device_data: DeviceData) -> None:
         super().__init__(device_info, device_data)
+        # the app addresses the DC panel's relays with module type 15368, not the documented 15362
+        self.dcSwitchFunction = lambda sn, value: {
+            "id": 123456789,
+            "version": "1.0",
+            "moduleSn": sn,
+            "moduleType": DC_PANEL_MODULE_TYPE,
+            "operateType": "chSwitch",
+            "params": {"bitsSwSta": value},
+        }
         if device_data.parent is not None:
             device_data.display_name = (
                 f"{device_data.parent.name} {_module_label(device_data.device_type)} ({self.module_sn})"
@@ -204,6 +268,17 @@ class PowerKit(PublicPowerKit):
                 return getattr(device, "module_sn", sibling.sn)
         _LOGGER.warning("No %s module found for %s; sending the command to %s", module_type, parent.sn, self.module_sn)
         return self.module_sn
+
+    def _module_command(self, module_type: int, operate_type: str, params: dict[str, Any]) -> dict[str, Any]:
+        """A command for this module itself."""
+        return {
+            "id": 123456789,
+            "version": "1.0",
+            "moduleSn": self.module_sn,
+            "moduleType": module_type,
+            "operateType": operate_type,
+            "params": params,
+        }
 
     def _inverter_command(self, client: EcoflowApiClient, params: dict[str, Any]) -> dict[str, Any]:
         # the inverter settings are read on ichigh but set through iclow
@@ -336,8 +411,8 @@ class PowerKit(PublicPowerKit):
     @override
     def switches(self, client: EcoflowApiClient) -> list[SwitchEntity]:
         module_type = self.device_data.device_type
-        if module_type == "iclow" or module_type == "bbcin":
-            # their switches read a state only the sibling module reports; see ichigh / bbcout
+        if module_type == "iclow":
+            # its switches read a state only ichigh reports; see there
             return []
         if module_type == "ichigh":
             return [
@@ -382,8 +457,70 @@ class PowerKit(PublicPowerKit):
                     disableValue=1,
                 ),
             ]
-        if module_type == "lddc":
+        if module_type == "kitscc":
             return [
+                EnabledEntity(
+                    client,
+                    self,
+                    "mppt1SwSta",
+                    "Solar (2) Charging",
+                    lambda value: self._module_command(
+                        MPPT_MODULE_TYPE, "pvSwitch", {**_PV_PARAMS, "mpptt1": 1 if value == 1 else 0}
+                    ),
+                    enableValue=1,
+                ),
+                EnabledEntity(
+                    client,
+                    self,
+                    "mppt2SwSta",
+                    "Solar (3) Charging",
+                    lambda value: self._module_command(
+                        MPPT_MODULE_TYPE, "pvSwitch", {**_PV_PARAMS, "mpptt2": 1 if value == 1 else 0}
+                    ),
+                    enableValue=1,
+                ),
+            ]
+        if module_type == "bbcin":
+            return [
+                # chgPause 1 pauses charging from the alternator / generator input
+                EnabledEntity(
+                    client,
+                    self,
+                    "chgPause",
+                    "DC Input Charging",
+                    lambda value: self._module_command(
+                        DC_IN_MODULE_TYPE, "chgParaSet", {**_DC_IN_PARAMS, "chgPause": 0 if value == 0 else 1}
+                    ),
+                    enableValue=0,
+                    disableValue=1,
+                ),
+            ]
+        if module_type == "bbcout":
+            return [
+                EnabledEntity(
+                    client,
+                    self,
+                    "dcOutSta",
+                    "Main DC Output",
+                    lambda value: self._module_command(
+                        DC_OUT_MODULE_TYPE, "dischgParaSet", {**_DC_OUT_PARAMS, "swSta": 1 if value == 1 else 0}
+                    ),
+                    enableValue=1,
+                ),
+                # same message family as the main DC output; not captured from the app yet
+                EnabledEntity(
+                    client,
+                    self,
+                    "beepEn",
+                    "Beeper",
+                    lambda value: self._module_command(
+                        DC_OUT_MODULE_TYPE, "dischgParaSet", {**_DC_OUT_PARAMS, "beepEn": 1 if value == 1 else 0}
+                    ),
+                    enableValue=1,
+                ),
+            ]
+        if module_type == "lddc":
+            switches: list[SwitchEntity] = [
                 BitMaskEnableEntity(
                     client,
                     self,
@@ -394,28 +531,58 @@ class PowerKit(PublicPowerKit):
                 )
                 for n in range(1, DC_PANEL_SWITCHES + 1)
             ]
-        if module_type == "bbcout":
-            return [
-                EnabledEntity(
+            switches += [
+                BitMaskEnableEntity(
                     client,
                     self,
-                    "dcOutSta",
-                    "Main DC Output",
-                    lambda value: {
-                        "id": 123456789,
-                        "version": "1.0",
-                        "moduleSn": self._sibling_sn(client, "bbcin"),
-                        "moduleType": DC_IN_MODULE_TYPE,
-                        "operateType": "dischgParaSet",
-                        "params": {"swSta": 1 if value == 1 else 0},
-                    },
-                    enableValue=1,
-                ),
+                    f"dcChRelayV2.{n - DC_PANEL_SWITCHES}",
+                    f"DC Switch {n}",
+                    self.dcSwitchFunction,
+                    bits=DC_PANEL_CHANNELS - DC_PANEL_SWITCHES,
+                    command_index=n - 1,
+                )
+                for n in range(DC_PANEL_SWITCHES + 1, DC_PANEL_CHANNELS + 1)
             ]
+            return switches
         return super().switches(client)
 
     @override
     def numbers(self, client: EcoflowApiClient) -> list[NumberEntity]:
+        if self.is_hub:
+            return [
+                MinBatteryLevelEntity(
+                    client,
+                    self,
+                    "bmsDsgDownline",
+                    const.MIN_DISCHARGE_LEVEL,
+                    0,
+                    30,
+                    lambda value: {
+                        "id": 123456789,
+                        "version": "1.0",
+                        "moduleSn": NO_MODULE_SN,
+                        "moduleType": 0,
+                        "operateType": "socLowerLimit",
+                        "params": {"minDsgSoc": int(value)},
+                    },
+                ),
+                MaxBatteryLevelEntity(
+                    client,
+                    self,
+                    "bmsChgUpline",
+                    const.MAX_CHARGE_LEVEL,
+                    50,
+                    100,
+                    lambda value: {
+                        "id": 123456789,
+                        "version": "1.0",
+                        "moduleSn": NO_MODULE_SN,
+                        "moduleType": 0,
+                        "operateType": "socUpperLimit",
+                        "params": {"maxChgSoc": int(value)},
+                    },
+                ),
+            ]
         module_type = self.device_data.device_type
         if module_type == "iclow":
             return []

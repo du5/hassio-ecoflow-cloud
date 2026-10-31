@@ -61,6 +61,7 @@ class BitMaskEnableEntity(EnabledEntity):
         enabled: bool = True,
         auto_enable: bool = False,
         bits: int = 6,
+        command_index: int | None = None,
     ):
         """
         Init the bitmask switsch
@@ -73,6 +74,9 @@ class BitMaskEnableEntity(EnabledEntity):
         parameter the sn (serial number) and a a second parameter the value (precalculated bitmask).
         :param bool enabled: defines if this switch is enabled by default
         :param bool auto_enable: defines if this switch is enabled by default
+        :param int bits: width of the bitmask the state is read from
+        :param int command_index: zero based channel index used in the command when the
+        state mask does not start at channel 1 (e.g. a second mask for channels 13-16)
         """
         # TODO: We don't know right now a good solution to the problem of lambda overloading
 
@@ -80,6 +84,7 @@ class BitMaskEnableEntity(EnabledEntity):
         self.switchNumber = int(splittedKey[-1])
         self.bits = bits
         self.bitmask = "0" * bits
+        self.command_index = self.switchNumber - 1 if command_index is None else command_index
         mqtt_key = ".".join(splittedKey[:-1])
         # the command addresses the module by its real serial, not the sub device key
         module_sn = getattr(device, "module_sn", device.device_data.sn)
@@ -105,11 +110,11 @@ class BitMaskEnableEntity(EnabledEntity):
 
     def turn_on(self, **kwargs: Any) -> None:
         if self._command:
-            self.send_set_message(1, self.command_dict(128 + (self.switchNumber - 1)))
+            self.send_set_message(1, self.command_dict(128 + self.command_index))
 
     def turn_off(self, **kwargs: Any) -> None:
         if self._command:
-            self.send_set_message(0, self.command_dict((self.switchNumber - 1)))
+            self.send_set_message(0, self.command_dict(self.command_index))
 
 
 class PowerKit(BaseDevice):
