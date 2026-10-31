@@ -63,7 +63,7 @@ from Home Assistant.
   `private_api` with the device type `POWER_KITS` instead. Its batteries, BMS, MPPT, inverter and distribution
   panels are discovered as separate devices when the hub is added. The commands for the main DC output, DC input
   charging, the solar ports, the battery SOC limits, AC charging and the 16 DC circuits of the AC/DC panel
-  (EF-PK-005-2), the DC port modes, the AC current limits, grid priority, the beeper and the DC output voltage were
+  (EF-PK-O05-2), the DC port modes, the AC current limits, grid priority, the beeper and the DC output voltage were
   captured from the EcoFlow app on a 2nd generation hub; only the AC output switch is not confirmed yet. The AC
   branch circuits are breakers that cannot be switched remotely.
   Component names, specifications, module map and units of the 2nd generation kit:
