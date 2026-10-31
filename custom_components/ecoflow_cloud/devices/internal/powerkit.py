@@ -23,9 +23,10 @@ The commands for the main DC output, the three DC charging ports (ALT IN n / PV
 IN n: charging on/off and the auto / alternator / solar mode), the battery SOC
 limits, AC charging and the DC circuits were captured from the EcoFlow app
 talking to a 2nd-generation hub; they differ from the 1st-generation
-documentation in places (module types 15363 and 15368). AC output, the charge
-current, grid priority and the beeper reuse the same message families and are
-not captured yet.
+documentation in places (module types 15363 and 15368). The AC charging and
+input current limits travel together in one dischgIcParaSet (2 to 20 A and 2 to
+50 A on a 230 V hub, charging never above input). AC output, grid priority and
+the beeper reuse the same message families and are not captured yet.
 """
 
 import logging
@@ -92,6 +93,10 @@ DC_PANEL_CHANNELS = 16  # F1 to F16 on the 2nd generation panel
 _PORT_MODES = {"Auto": 0, "Alternator": 1, "Solar": 2}
 # alternator type on port 1; with a 48 V excited alternator the port cannot discharge in reverse
 _ALTERNATOR_TYPES = {"Generic": 0, "48V Excited": 1}
+
+# AC current limits as the app offers them on a 230 V hub; the charging current may not exceed the input current
+AC_CHARGE_CURRENT_RANGE = (2, 20)
+AC_INPUT_CURRENT_RANGE = (2, 50)
 DC_PANEL_SWITCHES = 12  # channels in the dcChRelay bitmask; dcChRelayV2 carries the remaining four
 
 # the app sends every parameter of a group and marks the unchanged ones
@@ -288,6 +293,34 @@ class PowerKit(PublicPowerKit):
             "params": params,
         }
 
+    def _ac_current_command(
+        self,
+        client: EcoflowApiClient,
+        params: dict[str, Any],
+        charge: int | None = None,
+        bypass: int | None = None,
+    ) -> dict[str, Any]:
+        """The app sends both AC current limits together; the charging current never exceeds the input one."""
+        app_cfg: dict[str, Any] = params.get("appCfg") if isinstance(params.get("appCfg"), dict) else {}
+        charge_value = charge if charge is not None else app_cfg.get("acMaxCurrSer", 255)
+        bypass_value = bypass if bypass is not None else app_cfg.get("passByMaxCurr", 255)
+        if isinstance(charge_value, int) and isinstance(bypass_value, int) and 255 not in (charge_value, bypass_value):
+            charge_value = min(charge_value, bypass_value)
+        return self._inverter_command(
+            client,
+            {
+                "wakeup": 1,
+                "powerOn": 255,
+                "acChgDisa": 255,
+                "acRlyCtrlDisable": 255,
+                "acCurrMaxSet": charge_value,
+                "passByMaxCurr": bypass_value,
+                "acVolSet": 255,
+                "acFrequencySet": 255,
+                "standbyTime": 255,
+            },
+        )
+
     def _inverter_command(self, client: EcoflowApiClient, params: dict[str, Any]) -> dict[str, Any]:
         # the inverter settings are read on ichigh but set through iclow
         return {
@@ -336,12 +369,6 @@ class PowerKit(PublicPowerKit):
             sensors += [
                 MiscSensorEntity(client, self, "outVa", "AC Out Apparent Power").with_unit_of_measurement("VA"),
                 InWattsSensorEntity(client, self, "chgWatts", "AC Charge Power"),
-                MiscSensorEntity(
-                    client, self, "appCfg.acMaxCurrSer", "AC Charge Current Limit", False
-                ).with_unit_of_measurement(UnitOfElectricCurrent.AMPERE),
-                MiscSensorEntity(
-                    client, self, "appCfg.passByMaxCurr", "Bypass Current Limit", False
-                ).with_unit_of_measurement(UnitOfElectricCurrent.AMPERE),
                 MiscSensorEntity(
                     client, self, "appCfg.acVolSet", "AC Out Voltage Setting", False
                 ).with_unit_of_measurement(UnitOfElectricPotential.VOLT),
@@ -645,17 +672,23 @@ class PowerKit(PublicPowerKit):
         module_type = self.device_data.device_type
         if module_type == "iclow":
             return []
-        if module_type == "ichigh" and self.device_data.parent is not None:
-            parent_sn = self.device_data.parent.sn
+        if module_type == "ichigh":
             return [
                 AcChargingPowerInAmpereEntity(
                     client,
                     self,
                     "appCfg.acMaxCurrSer",
-                    const.AC_CHARGING_POWER,
-                    0,
-                    40,  # the app enforces the limit of the region; the hub reported 20 A on a 230 V kit
-                    lambda value: {**self._inverter_command(client, {"acCurrMaxSet": int(value)}), "sn": parent_sn},
-                ),
+                    "AC Charging Current",
+                    *AC_CHARGE_CURRENT_RANGE,
+                    lambda value, params: self._ac_current_command(client, params, charge=int(value)),
+                ).with_unit_of_measurement(UnitOfElectricCurrent.AMPERE),
+                AcChargingPowerInAmpereEntity(
+                    client,
+                    self,
+                    "appCfg.passByMaxCurr",
+                    "AC Input Current",
+                    *AC_INPUT_CURRENT_RANGE,
+                    lambda value, params: self._ac_current_command(client, params, bypass=int(value)),
+                ).with_unit_of_measurement(UnitOfElectricCurrent.AMPERE),
             ]
         return super().numbers(client)

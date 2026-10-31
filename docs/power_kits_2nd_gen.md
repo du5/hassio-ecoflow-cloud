@@ -98,6 +98,7 @@ App 协议把一套系统拆成若干模块上报，每个模块在 Home Assista
 | 端口 2、3 充电 | kitscc | 15364 | pvSwitch | `mpptt1` / `mpptt2` 1/0 |
 | 端口 2、3 充电模式 | kitscc | 15364 | pvSwitch | `setPort1Type` / `setPort2Type` 0 自动 / 1 行车发电机 / 2 太阳能 |
 | 交流充电 | iclow | 15365 | dischgIcParaSet | `acChgDisa` 1 禁止 / 0 允许 |
+| 交流充电电流 / 交流输入电流 | iclow | 15365 | dischgIcParaSet | `acCurrMaxSet` 2–20 A、`passByMaxCurr` 2–50 A，两个值一起发，`wakeup` 1；充电电流不能超过输入电流 |
 | 放电下限 / 充电上限 | 0000000000000000 | 0 | socLowerLimit / socUpperLimit | `minDsgSoc` / `maxChgSoc` |
 | 直流回路 F1–F16 | 配电盘 | 15368 | chSwitch | `bitsSwSta`：开 128+序号-1，关 序号-1 |
 
@@ -109,6 +110,6 @@ App 打开期间每 10 秒向 bbcout 发一条 `hubExitLsp: 1` 的 dischgParaSet
 
 ## 已知限制
 
-- 交流输出、交流充电电流、市电优先、蜂鸣器沿用同一消息族，尚未抓到 App 的原始命令。
-- 交流充电电流滑块的范围是 0–40 A，实际上限以 App 为准（本机当前设定 20 A）。
+- 交流输出、市电优先、蜂鸣器沿用同一消息族，尚未抓到 App 的原始命令。
+- 两个交流电流滑块的范围取自 230 V 版主机的 App（充电 2–20 A，输入 2–50 A）；把充电电流设得高于输入电流时，集成会按输入电流封顶，和 App 一致。
 - 配电盘各回路在 App 里起的别名（`getAcAllAlias` / `getDcAllAlias`）暂未用于实体命名。

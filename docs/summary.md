@@ -1714,7 +1714,7 @@
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 218, switches: 24, sliders: 3, selects: 4)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 4)</i> </summary>
 <p>
 
 ### hub
@@ -1982,8 +1982,6 @@
 - AC Output Day Power  _(disabled)_
 - AC Out Apparent Power
 - AC Charge Power
-- AC Charge Current Limit  _(disabled)_
-- Bypass Current Limit  _(disabled)_
 - AC Out Voltage Setting  _(disabled)_
 - AC Out Frequency Setting  _(disabled)_
 
@@ -1993,7 +1991,8 @@
 - AC Charging
 
 *Sliders (numbers)*
-- AC Charging Power
+- AC Charging Current
+- AC Input Current
 
 ### ldac
 

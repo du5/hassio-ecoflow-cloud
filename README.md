@@ -63,9 +63,9 @@ from Home Assistant.
   `private_api` with the device type `POWER_KITS` instead. Its batteries, BMS, MPPT, inverter and distribution
   panels are discovered as separate devices when the hub is added. The commands for the main DC output, DC input
   charging, the solar ports, the battery SOC limits, AC charging and the 16 DC circuits of the AC/DC panel
-  (EF-PK-005-2) were captured from the EcoFlow app on a 2nd generation hub; AC output, the charge current, grid
-  priority and the beeper reuse the same message families and are not confirmed yet. The AC branch circuits are
-  breakers that cannot be switched remotely.
+  (EF-PK-005-2), the DC port modes and the AC current limits were captured from the EcoFlow app on a 2nd
+  generation hub; AC output, grid priority and the beeper reuse the same message families and are not confirmed
+  yet. The AC branch circuits are breakers that cannot be switched remotely.
   Component names, specifications, module map and units of the 2nd generation kit:
   [docs/power_kits_2nd_gen.md](docs/power_kits_2nd_gen.md).
 
@@ -1789,7 +1789,7 @@ from Home Assistant.
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 218, switches: 24, sliders: 3, selects: 4)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 4)</i> </summary>
 <p>
 
 ### hub
@@ -2057,8 +2057,6 @@ from Home Assistant.
 - AC Output Day Power  _(disabled)_
 - AC Out Apparent Power
 - AC Charge Power
-- AC Charge Current Limit  _(disabled)_
-- Bypass Current Limit  _(disabled)_
 - AC Out Voltage Setting  _(disabled)_
 - AC Out Frequency Setting  _(disabled)_
 
@@ -2068,7 +2066,8 @@ from Home Assistant.
 - AC Charging
 
 *Sliders (numbers)*
-- AC Charging Power
+- AC Charging Current
+- AC Input Current
 
 ### ldac
 

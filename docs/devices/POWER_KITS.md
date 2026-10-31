@@ -265,8 +265,6 @@
 - AC Output Day Power (`outputWhInDay`)   _(disabled)_
 - AC Out Apparent Power (`outVa`)
 - AC Charge Power (`chgWatts`)
-- AC Charge Current Limit (`appCfg.acMaxCurrSer`)   _(disabled)_
-- Bypass Current Limit (`appCfg.passByMaxCurr`)   _(disabled)_
 - AC Out Voltage Setting (`appCfg.acVolSet`)   _(disabled)_
 - AC Out Frequency Setting (`appCfg.acFreqSet`)   _(disabled)_
 
@@ -276,7 +274,8 @@
 - AC Charging (`appCfg.acChgDisable` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": 255, "powerOn": 255, "acChgDisa": 1, "acFrequencySet": 255, "wakeup": 1, "standbyTime": 255, "acRlyCtrlDisable": 255, "acVolSet": 255, "passByMaxCurr": 255}}`)
 
 *Sliders (numbers)*
-- AC Charging Power (`appCfg.acMaxCurrSer` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": "VALUE"}, "sn": "SN"}` [0 - 40])
+- AC Charging Current (`appCfg.acMaxCurrSer` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"wakeup": 1, "powerOn": 255, "acChgDisa": 255, "acRlyCtrlDisable": 255, "acCurrMaxSet": "VALUE", "passByMaxCurr": 255, "acVolSet": 255, "acFrequencySet": 255, "standbyTime": 255}}` [2 - 20])
+- AC Input Current (`appCfg.passByMaxCurr` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"wakeup": 1, "powerOn": 255, "acChgDisa": 255, "acRlyCtrlDisable": 255, "acCurrMaxSet": 255, "passByMaxCurr": "VALUE", "acVolSet": 255, "acFrequencySet": 255, "standbyTime": 255}}` [2 - 50])
 
 ### ldac
 
