@@ -65,18 +65,20 @@ def create_test_device_info() -> EcoflowDeviceInfo:
     )
 
 
-# Multi-device configurations
+# Multi-device configurations: the modules that become sub devices of the parent device
+POWER_KIT_MODULES = [
+    "bbcin",
+    "bbcout",
+    "iclow",
+    "bpxxx",
+    "kitscc",
+    "lddc",
+    "ichigh",
+    "ldac",
+]
 MULTI_DEVICE_CONFIGURATIONS = {
-    "Power Kits": [
-        "bbcin",
-        "bbcout",
-        "iclow",
-        "bpxxx",
-        "kitscc",
-        "lddc",
-        "ichigh",
-        "ldac",
-    ]
+    "Power Kits": POWER_KIT_MODULES,
+    "POWER_KITS": POWER_KIT_MODULES,
 }
 
 # Initialize configurations
@@ -107,7 +109,16 @@ class DocumentationGenerator:
         """Get device data for a given device type."""
         if device_type in device_support_sub_devices:
             if device_type in MULTI_DEVICE_CONFIGURATIONS:
-                return [
+                # the parent device itself first (its own entities, if any), then one device per module
+                parent = DeviceData(
+                    DEVICE_SN,
+                    DEVICE_NAME,
+                    device_type,
+                    device_options,
+                    None,
+                    None,
+                )
+                return [parent] + [
                     DeviceData(
                         DEVICE_SN,
                         DEVICE_NAME,
@@ -146,6 +157,19 @@ class DocumentationGenerator:
             device.configure(hass)
             real_devices.append(device)
         return real_devices
+
+    def render_devices(self, real_devices: list[BaseDevice], brief: bool = False) -> str:
+        """Render one or more devices; a multi-device set gets a heading per device, the parent labelled "hub"."""
+        content = ""
+        for device in real_devices:
+            summary = render_device_summary(device, brief)
+            if not summary.strip():
+                continue
+            if len(real_devices) > 1:
+                heading = device.device_data.device_type if device.device_data.parent is not None else "hub"
+                content = content + f"\n### {heading}\n"
+            content = content + summary
+        return content
 
     def device_summary(self, base_devices: list[BaseDevice]) -> str:
         """Generate a summary string for devices."""
@@ -189,10 +213,7 @@ class DocumentationGenerator:
             if not dt.upper().startswith("DIAGNOSTIC"):
                 content = ""
                 real_devices = self.get_devices(hass, dt, dev)
-                for device in real_devices:
-                    if len(real_devices) > 1:
-                        content = content + f"\n### {device.device_data.device_type}\n"
-                    content = content + render_device_summary(device, True)
+                content = self.render_devices(real_devices, True)
                 content_summary += f"<details><summary> {dt} <i>({self.device_summary(real_devices)})</i> </summary>"
                 content_summary += "\n<p>\n"
                 content_summary += content
@@ -204,10 +225,7 @@ class DocumentationGenerator:
             if not dt.upper().startswith("DIAGNOSTIC"):
                 content = ""
                 real_devices = self.get_devices(hass, dt, dev)
-                for device in real_devices:
-                    if len(real_devices) > 1:
-                        content = content + f"\n### {device.device_data.device_type}\n"
-                    content = content + render_device_summary(device, True)
+                content = self.render_devices(real_devices, True)
                 content_summary += f"<details><summary> {dt} (API) <i>({self.device_summary(real_devices)})</i> </summary>"
 
                 content_summary += "\n<p>\n"
@@ -254,10 +272,7 @@ class DocumentationGenerator:
             if not dt.upper().startswith("DIAGNOSTIC"):
                 content = ""
                 real_devices = self.get_devices(hass, dt, dev)
-                for device in real_devices:
-                    if len(real_devices) > 1:
-                        content = content + f"\n### {device.device_data.device_type}\n"
-                    content = content + render_device_summary(device)
+                content = self.render_devices(real_devices)
 
                 filename = f"{OUTPUT_DIR}/{dt}.md"
                 with open(filename, "w+", encoding="utf-8") as f:
@@ -271,10 +286,7 @@ class DocumentationGenerator:
             if not dt.upper().startswith("DIAGNOSTIC"):
                 content = ""
                 real_devices = self.get_devices(hass, dt, dev)
-                for device in real_devices:
-                    if len(real_devices) > 1:
-                        content = content + f"\n### {device.device_data.device_type}\n"
-                    content = content + render_device_summary(device)
+                content = self.render_devices(real_devices)
 
                 name = dt.replace(" ", "_")
                 filename = f"{OUTPUT_DIR}/{name}-Public.md"

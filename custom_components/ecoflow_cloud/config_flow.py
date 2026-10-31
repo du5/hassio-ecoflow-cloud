@@ -59,6 +59,28 @@ _LOGGER = logging.getLogger(__name__)
 API_SELECT_DEVICE_SCHEMA = vol.Schema({vol.Required(CONF_SELECT_DEVICE_KEY): str})
 
 
+def _modules_from_public_quota(data: dict[str, Any]) -> dict[str, str]:
+    """``{module_sn: module_type}`` from a public API ``/device/quota/all`` response.
+
+    The response for a Power Kit is a FLAT dict whose keys look like
+    "<moduleType>.<moduleSn>.<field>" (e.g. "bp5000.M101Z3B4ZE5A0737.soc"), with
+    scalar values. Aggregate keys such as "bmsTotal.<field>" carry no module serial.
+    Older firmware/API returned a nested dict ({type: {sn: {...}}}); support both.
+    """
+    discovered: dict[str, str] = {}
+    for key, value in data.items():
+        parts = key.split(".")
+        if len(parts) >= 3:
+            sub_device_type, sub_device_sn = parts[0], parts[1]
+            discovered.setdefault(sub_device_sn, sub_device_type)
+        elif isinstance(value, dict):
+            # legacy nested shape: {sub_device_type: {sub_device_sn: {...}}}
+            for sub_device_sn, item in value.items():
+                if isinstance(item, dict | list):
+                    discovered.setdefault(sub_device_sn, key)
+    return discovered
+
+
 class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
     VERSION = CONFIG_VERSION
 
@@ -86,7 +108,9 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
             self.local_devices[f"{device.name} ({device.sn})"] = device
 
     async def update_or_create(self):
-        if self.config_entry:
+        await self._discover_sub_devices()
+
+        if self.config_entry:  # reconfig flow
             _LOGGER.info(
                 ".. reconfigure: entry = %s, data = %s, options = %s ",
                 str(self.config_entry),
@@ -109,53 +133,71 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
                 str(self.new_options),
             )
 
-            from .devices.registry import device_support_sub_devices
-
-            # iterate over a snapshot: the loop mutates new_data[CONF_DEVICE_LIST]
-            for sn, device_data in list(self.new_data[CONF_DEVICE_LIST].items()):
-                if device_data[CONF_DEVICE_TYPE] not in device_support_sub_devices:
-                    # skip here all devices that do not support sub devices
-                    continue
-                from .api.public_api import EcoflowPublicApiClient
-
-                if not isinstance(self.auth, EcoflowPublicApiClient):
-                    raise TypeError("Only public api is supported for devices with sub devices")
-                all_device_info = await self.auth.call_api("/device/quota/all", {"sn": sn})
-
-                # The "/device/quota/all" response for a Power Kit is a FLAT dict whose
-                # keys look like "<moduleType>.<moduleSn>.<field>"
-                # (e.g. "bp5000.M101Z3B4ZE5A0737.soc"), with scalar values. Aggregate
-                # keys such as "bmsTotal.<field>" carry no module serial. Older
-                # firmware/API returned a nested dict ({type: {sn: {...}}}); support both.
-                discovered: dict[str, str] = {}  # sub_device_sn -> sub_device_type
-                for key, value in all_device_info["data"].items():
-                    parts = key.split(".")
-                    if len(parts) >= 3:
-                        sub_device_type, sub_device_sn = parts[0], parts[1]
-                        discovered.setdefault(sub_device_sn, sub_device_type)
-                    elif isinstance(value, dict):
-                        # legacy nested shape: {sub_device_type: {sub_device_sn: {...}}}
-                        for sub_device_sn, item in value.items():
-                            if isinstance(item, (dict, list)):
-                                discovered.setdefault(sub_device_sn, key)
-
-                for sub_device_sn, sub_device_type in discovered.items():
-                    if sub_device_sn == sn:
-                        # some modules (e.g. "wireless") report under the parent's
-                        # serial; skip to avoid overwriting the parent device entry
-                        continue
-                    self.new_data[CONF_DEVICE_LIST][sub_device_sn] = {
-                        CONF_DEVICE_NAME: f"{device_data[CONF_DEVICE_NAME]}.{sub_device_type}.{sub_device_sn}",
-                        CONF_DEVICE_TYPE: sub_device_type,
-                        CONF_PARENT_SN: sn,
-                    }
-                    self.new_options[CONF_DEVICE_LIST][sub_device_sn] = self.new_options[CONF_DEVICE_LIST][sn]
-
             return self.async_create_entry(
                 title=self.new_data[CONF_GROUP],
                 data=self.new_data,
                 options=self.new_options,
             )
+
+    async def _discover_sub_devices(self) -> None:
+        """Add the modules of every newly added multi-module device (Power Kits) as sub devices.
+
+        Runs for the create and the reconfigure flow alike. A device whose modules were
+        discovered earlier is left alone, so re-running the flow never duplicates or
+        renames existing sub devices.
+        """
+        from .devices.registry import device_support_sub_devices
+
+        device_list = self.new_data.get(CONF_DEVICE_LIST, {})
+        parents_with_children = {d[CONF_PARENT_SN] for d in device_list.values() if CONF_PARENT_SN in d}
+
+        # iterate over a snapshot: the loop mutates new_data[CONF_DEVICE_LIST]
+        for sn, device_data in list(device_list.items()):
+            if device_data[CONF_DEVICE_TYPE] not in device_support_sub_devices or CONF_PARENT_SN in device_data:
+                continue
+            if sn in parents_with_children:
+                continue
+
+            try:
+                discovered = await self._discover_modules(sn)
+            except Exception:
+                _LOGGER.exception("Module discovery for %s failed; reconfigure the integration to retry", sn)
+                continue
+            if not discovered:
+                _LOGGER.warning("No modules reported for %s; is it online? Reconfigure the integration to retry", sn)
+                continue
+
+            for sub_device_sn, sub_device_type in discovered.items():
+                if sub_device_sn == sn:
+                    # some modules (e.g. "wireless") report under the parent's
+                    # serial; skip to avoid overwriting the parent device entry
+                    continue
+                self.new_data[CONF_DEVICE_LIST][sub_device_sn] = {
+                    CONF_DEVICE_NAME: f"{device_data[CONF_DEVICE_NAME]}.{sub_device_type}.{sub_device_sn}",
+                    CONF_DEVICE_TYPE: sub_device_type,
+                    CONF_PARENT_SN: sn,
+                }
+                self.new_options[CONF_DEVICE_LIST][sub_device_sn] = dict(self.new_options[CONF_DEVICE_LIST][sn])
+
+    async def _discover_modules(self, sn: str) -> dict[str, str]:
+        """``{module_sn: module_type}`` of a multi-module device, from whichever API the flow is logged in to."""
+        from .api.private_api import EcoflowPrivateApiClient
+        from .api.public_api import EcoflowPublicApiClient
+
+        if isinstance(self.auth, EcoflowPublicApiClient):
+            all_device_info = await self.auth.call_api("/device/quota/all", {"sn": sn})
+            return _modules_from_public_quota(all_device_info.get("data", {}))
+
+        if isinstance(self.auth, EcoflowPrivateApiClient):
+            from .devices.internal.powerkit_data import discover_modules
+
+            # the app protocol has no REST quota call; ask the hub itself over MQTT
+            reply = await self.auth.fetch_latest_quotas(sn)
+            if reply is None:
+                return {}
+            return discover_modules(reply.get("quotaMap"), sn)
+
+        return {}
 
     def remove_device(self, sn: str):
         # Get the device registry
