@@ -89,6 +89,9 @@
 - Main DC Output (`dcOutSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15363, "operateType": "dischgParaSet", "params": {"swSta": 0, "beepEn": 255, "volTag": 255, "hubExitLsp": 255, "bbcInExitLsp": 255, "icExitLsp": 255, "sccExitLsp": 255, "noLoadPwr": 65535, "standbyTime": 65535}}`)
 - Beeper (`beepEn` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15363, "operateType": "dischgParaSet", "params": {"swSta": 255, "beepEn": 0, "volTag": 255, "hubExitLsp": 255, "bbcInExitLsp": 255, "icExitLsp": 255, "sccExitLsp": 255, "noLoadPwr": 65535, "standbyTime": 65535}}`)
 
+*Selects*
+- DC Output Voltage (`cfgVolTag` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15363, "operateType": "dischgParaSet", "params": {"swSta": 255, "beepEn": 255, "volTag": "VALUE", "hubExitLsp": 255, "bbcInExitLsp": 255, "icExitLsp": 255, "sccExitLsp": 255, "noLoadPwr": 65535, "standbyTime": 65535}}` [12V (0), 24V (1)])
+
 ### iclow
 
 *Sensors*
@@ -269,7 +272,7 @@
 - AC Out Frequency Setting (`appCfg.acFreqSet`)   _(disabled)_
 
 *Switches*
-- Prioretize grid (`passByModeEn` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dsgIcParaSet", "params": {"dsgLowPwrEn": 255, "pfcDsgModeEn": 255, "passByCurrMax": 255, "passByModeEn": 2}}`)
+- Grid Priority (`passByModeEn` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dsgIcParaSet", "params": {"invNoLoadPwr": 65535, "dsgLowPwrEn": 255, "setInvTag": 255, "pfcDsgModeEn": 255, "passByCurrMax": 255, "passByModeEn": 2}}`)
 - AC Output (`invSwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"powerOn": 0, "acCurrMaxSet": 255, "acChgDisa": 255, "acFrequencySet": 255, "acVolSet": 255}}`)
 - AC Charging (`appCfg.acChgDisable` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": 255, "powerOn": 255, "acChgDisa": 1, "acFrequencySet": 255, "wakeup": 1, "standbyTime": 255, "acRlyCtrlDisable": 255, "acVolSet": 255, "passByMaxCurr": 255}}`)
 

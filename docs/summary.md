@@ -1714,7 +1714,7 @@
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 4)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 5)</i> </summary>
 <p>
 
 ### hub
@@ -1805,6 +1805,9 @@
 *Switches*
 - Main DC Output
 - Beeper
+
+*Selects*
+- DC Output Voltage
 
 ### iclow
 
@@ -1986,7 +1989,7 @@
 - AC Out Frequency Setting  _(disabled)_
 
 *Switches*
-- Prioretize grid
+- Grid Priority
 - AC Output
 - AC Charging
 

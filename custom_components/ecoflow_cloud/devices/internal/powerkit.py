@@ -23,10 +23,11 @@ The commands for the main DC output, the three DC charging ports (ALT IN n / PV
 IN n: charging on/off and the auto / alternator / solar mode), the battery SOC
 limits, AC charging and the DC circuits were captured from the EcoFlow app
 talking to a 2nd-generation hub; they differ from the 1st-generation
-documentation in places (module types 15363 and 15368). The AC charging and
-input current limits travel together in one dischgIcParaSet (2 to 20 A and 2 to
-50 A on a 230 V hub, charging never above input). AC output, grid priority and
-the beeper reuse the same message families and are not captured yet.
+documentation in places (module types 15363 and 15368, grid priority set
+through iclow). The AC charging and input current limits travel together in
+one dischgIcParaSet (2 to 20 A and 2 to 50 A on a 230 V hub, charging never
+above input). Only the AC output switch is not captured yet; it is the powerOn
+field of the message the AC charging switch uses.
 """
 
 import logging
@@ -97,6 +98,9 @@ _ALTERNATOR_TYPES = {"Generic": 0, "48V Excited": 1}
 # AC current limits as the app offers them on a 230 V hub; the charging current may not exceed the input current
 AC_CHARGE_CURRENT_RANGE = (2, 20)
 AC_INPUT_CURRENT_RANGE = (2, 50)
+
+# volTag of the main DC output; 0 is the hub's default and the 12 V setting of a 12 V kit
+_DC_OUTPUT_VOLTAGES = {"12V": 0, "24V": 1}
 DC_PANEL_SWITCHES = 12  # channels in the dcChRelay bitmask; dcChRelayV2 carries the remaining four
 
 # the app sends every parameter of a group and marks the unchanged ones
@@ -136,6 +140,14 @@ _PV_PARAMS = {
     "alt2VoltLmtEn": _UNCHANGED,
     "setPort1Type": _UNCHANGED,
     "setPort2Type": _UNCHANGED,
+}
+# passByModeEn: 1 runs the loads from the grid when it is present, 2 from the battery
+_GRID_PRIORITY_PARAMS = {
+    "invNoLoadPwr": _UNCHANGED_WORD,
+    "dsgLowPwrEn": _UNCHANGED,
+    "setInvTag": _UNCHANGED,
+    "pfcDsgModeEn": _UNCHANGED,
+    "passByCurrMax": _UNCHANGED,
 }
 
 _MODULE_LABELS = {
@@ -452,7 +464,23 @@ class PowerKit(PublicPowerKit):
             return []
         if module_type == "ichigh":
             return [
-                *super().switches(client),
+                # the inverter settings are read on ichigh; the app sets them through iclow
+                EnabledEntity(
+                    client,
+                    self,
+                    "passByModeEn",
+                    "Grid Priority",
+                    lambda value: {
+                        "id": 123456789,
+                        "version": "1.0",
+                        "moduleSn": self._sibling_sn(client, "iclow"),
+                        "moduleType": INVERTER_MODULE_TYPE,
+                        "operateType": "dsgIcParaSet",
+                        "params": {**_GRID_PRIORITY_PARAMS, "passByModeEn": 1 if value == 1 else 2},
+                    },
+                    enableValue=1,
+                    disableValue=2,
+                ),
                 EnabledEntity(
                     client,
                     self,
@@ -543,7 +571,6 @@ class PowerKit(PublicPowerKit):
                     ),
                     enableValue=1,
                 ),
-                # same message family as the main DC output; not captured from the app yet
                 EnabledEntity(
                     client,
                     self,
@@ -606,6 +633,21 @@ class PowerKit(PublicPowerKit):
                     lambda value: self._module_command(
                         DC_IN_MODULE_TYPE, "chgDsgAltmodeSet", {"rsvd": ["0"] * 20, "alternatorMode": value}
                     ),
+                ),
+            ]
+        if module_type == "bbcout":
+            return [
+                # off by default: 24 V on 12 V loads can damage them, the app asks for confirmation
+                DictSelectEntity(
+                    client,
+                    self,
+                    "cfgVolTag",
+                    "DC Output Voltage",
+                    _DC_OUTPUT_VOLTAGES,
+                    lambda value: self._module_command(
+                        DC_OUT_MODULE_TYPE, "dischgParaSet", {**_DC_OUT_PARAMS, "volTag": value}
+                    ),
+                    enabled=False,
                 ),
             ]
         if module_type == "kitscc":
