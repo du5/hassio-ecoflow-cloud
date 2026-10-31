@@ -80,11 +80,34 @@ _MODULE_LABELS = {
     "ldac": "AC Panel",
 }
 
+# Product names as EcoFlow prints them (Chinese manual name, English name), shown as the
+# Home Assistant device model. The hub is the 智控五合一充逆一体机 / Power Hub; iclow, ichigh,
+# kitscc, bbcin and bbcout are the five functions inside it, bp* the batteries, lddc / ldac
+# the two boards of the AC/DC smart distribution panel.
+HUB_MODEL = "智控五合一充逆一体机 (Power Hub)"
+_MODULE_MODELS = {
+    "iclow": "智控五合一充逆一体机 逆变充电 电池侧 (Power Hub inverter charger, battery side)",
+    "ichigh": "智控五合一充逆一体机 逆变充电 交流侧 (Power Hub inverter charger, AC side)",
+    "kitscc": "智控五合一充逆一体机 MPPT 太阳能充电控制器 (Power Hub MPPT solar charge controller)",
+    "bbcin": "智控五合一充逆一体机 DC-DC 电池充电器 (Power Hub DC-DC battery charger)",
+    "bbcout": "智控五合一充逆一体机 DC-DC 降压输出 (Power Hub DC-DC step-down converter)",
+    "lddc": "交直流智能配电盘 直流回路 (AC/DC Smart Distribution Panel, DC circuits)",
+    "ldac": "交直流智能配电盘 交流回路 (AC/DC Smart Distribution Panel, AC circuits)",
+}
+
 
 def _module_label(module_type: str) -> str:
     if module_type.startswith("bp"):
         return "Battery"
     return _MODULE_LABELS.get(module_type, module_type)
+
+
+def _module_model(module_type: str) -> str:
+    if module_type.startswith("bp"):
+        # bp5000 is the 5 kWh pack, bp2000 the 2 kWh one
+        capacity = module_type[2:]
+        return f"磷酸铁锂电池 {capacity[:1]}kWh (LFP Battery)" if capacity.isdigit() else "磷酸铁锂电池 (LFP Battery)"
+    return _MODULE_MODELS.get(module_type, module_type)
 
 
 class TotalCurrentSensorEntity(AmpSensorEntity):
@@ -104,6 +127,9 @@ class PowerKit(PublicPowerKit):
             device_data.display_name = (
                 f"{device_data.parent.name} {_module_label(device_data.device_type)} ({self.module_sn})"
             )
+            self.model_name = _module_model(device_data.device_type)
+        else:
+            self.model_name = HUB_MODEL
 
     @property
     def is_hub(self) -> bool:

@@ -65,6 +65,8 @@ from Home Assistant.
   EcoFlow documents for the 1st generation and have not been confirmed on a 2nd generation hub yet. On the 2nd
   generation AC/DC panel (EF-PK-005-2) DC circuits 1 to 12 are switchable, circuits 13 to 16 are read-only until
   their command is known, and the AC branch circuits are breakers that cannot be switched remotely.
+  Component names, specifications, module map and units of the 2nd generation kit:
+  [docs/power_kits_2nd_gen.md](docs/power_kits_2nd_gen.md).
 
 ## Disclaimers
 

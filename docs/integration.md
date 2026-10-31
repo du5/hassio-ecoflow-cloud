@@ -22,6 +22,7 @@ Current integrations details:
 - [GLACIER](devices/GLACIER.md)
 - [WAVE_2](devices/WAVE_2.md)
 - [POWER_KITS](devices/POWER_KITS.md)
+- [Power Kits 2nd generation notes](power_kits_2nd_gen.md)
 - [DELTA_2](devices/DELTA_2-Public.md)
 - [DELTA_2_Max](devices/DELTA_2_Max-Public.md)
 - [RIVER_2](devices/RIVER_2-Public.md)
