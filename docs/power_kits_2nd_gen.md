@@ -14,7 +14,7 @@
 | 磷酸铁锂电池2度电 | LFP Battery 2kWh | 数据中模块类型 `bp2000` | 51.2 V / 40 Ah / 2048 Wh，16S2P；在售的只有这两种电池 |
 | 30/50A 交直流智能配电盘 | 30/50A AC/DC Smart Distribution Panel | EF-PK-005-2 | 配电盘手册；5kVA 主机最多接 2 台 |
 | 电池并联盒 | Power Dock | EF-PK-O05-3 | 并联盒手册；每台为主机增加 3 个电池口，最多 3 台、9 块电池、45 kWh |
-| 显示屏 | Power Insight 2 | | 10 英寸触摸屏（规格表） |
+| 控制台（官方中文名待手册核对） | Power Kit Console | | 套装随附的有线控制台（用户确认），规格待按官方手册补充 |
 | Power Link | Power Link | | 与配电盘一样挂在 EF BUS 上（配电盘手册） |
 
 ## 主机规格
@@ -90,7 +90,7 @@ App 协议把一套系统拆成若干模块上报，每个模块在 Home Assista
 配电盘的交流板和直流板共用一个序列号，集成会把它们登记为 `序列号#ldac` 和 `序列号#lddc` 两个设备，设备页上的序列号仍显示真实序列号。
 
 在线模块列表（`onLineModuleSnList`）里还有三个没有数据流的模块：M3593-BPRT（moduleDetail 14）、M35J3-EXRT（moduleDetail 19）、M106ZCB5ZJ3C0022（moduleType 60，moduleDetail 13）。
-实测这套系统没有电池并联盒，所以它们只能是主机内部的电池口板、Power Link 或显示屏之一，待核对，目前不生成设备。
+实测这套系统没有电池并联盒，所以它们只能是主机内部的电池口板、Power Link 或 Power Kit Console 之一，待核对，目前不生成设备。
 接入电池并联盒后，每块新电池会以自己的 `bp5000` 模块出现，配置流程重新发现即可；并联盒本身是否作为模块上报、它的 48 V 输出口如何控制，要等接上实机抓包。
 
 ## 数值单位（实测核对）
