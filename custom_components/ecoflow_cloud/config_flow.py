@@ -59,25 +59,26 @@ _LOGGER = logging.getLogger(__name__)
 API_SELECT_DEVICE_SCHEMA = vol.Schema({vol.Required(CONF_SELECT_DEVICE_KEY): str})
 
 
-def _modules_from_public_quota(data: dict[str, Any]) -> dict[str, str]:
-    """``{module_sn: module_type}`` from a public API ``/device/quota/all`` response.
+def _modules_from_public_quota(data: dict[str, Any]) -> list[tuple[str, str]]:
+    """``(module_type, module_sn)`` pairs from a public API ``/device/quota/all`` response.
 
     The response for a Power Kit is a FLAT dict whose keys look like
     "<moduleType>.<moduleSn>.<field>" (e.g. "bp5000.M101Z3B4ZE5A0737.soc"), with
     scalar values. Aggregate keys such as "bmsTotal.<field>" carry no module serial.
     Older firmware/API returned a nested dict ({type: {sn: {...}}}); support both.
     """
-    discovered: dict[str, str] = {}
+    discovered: list[tuple[str, str]] = []
     for key, value in data.items():
         parts = key.split(".")
         if len(parts) >= 3:
             sub_device_type, sub_device_sn = parts[0], parts[1]
-            discovered.setdefault(sub_device_sn, sub_device_type)
+            if (sub_device_type, sub_device_sn) not in discovered:
+                discovered.append((sub_device_type, sub_device_sn))
         elif isinstance(value, dict):
             # legacy nested shape: {sub_device_type: {sub_device_sn: {...}}}
             for sub_device_sn, item in value.items():
-                if isinstance(item, dict | list):
-                    discovered.setdefault(sub_device_sn, key)
+                if isinstance(item, dict | list) and (key, sub_device_sn) not in discovered:
+                    discovered.append((key, sub_device_sn))
     return discovered
 
 
@@ -167,20 +168,26 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
                 _LOGGER.warning("No modules reported for %s; is it online? Reconfigure the integration to retry", sn)
                 continue
 
-            for sub_device_sn, sub_device_type in discovered.items():
-                if sub_device_sn == sn:
-                    # some modules (e.g. "wireless") report under the parent's
-                    # serial; skip to avoid overwriting the parent device entry
-                    continue
-                self.new_data[CONF_DEVICE_LIST][sub_device_sn] = {
+            from .devices.internal.powerkit_data import SN_TYPE_SEPARATOR
+
+            # some modules (e.g. "wireless") report under the parent's serial; skip
+            # those to avoid overwriting the parent device entry
+            modules = [(t, s) for t, s in discovered if s != sn]
+            serial_count = {s: sum(1 for _, x in modules if x == s) for _, s in modules}
+            for sub_device_type, sub_device_sn in modules:
+                # the device list is keyed by serial; modules sharing one get a typed key
+                key = sub_device_sn
+                if serial_count[sub_device_sn] > 1:
+                    key = f"{sub_device_sn}{SN_TYPE_SEPARATOR}{sub_device_type}"
+                self.new_data[CONF_DEVICE_LIST][key] = {
                     CONF_DEVICE_NAME: f"{device_data[CONF_DEVICE_NAME]}.{sub_device_type}.{sub_device_sn}",
                     CONF_DEVICE_TYPE: sub_device_type,
                     CONF_PARENT_SN: sn,
                 }
-                self.new_options[CONF_DEVICE_LIST][sub_device_sn] = dict(self.new_options[CONF_DEVICE_LIST][sn])
+                self.new_options[CONF_DEVICE_LIST][key] = dict(self.new_options[CONF_DEVICE_LIST][sn])
 
-    async def _discover_modules(self, sn: str) -> dict[str, str]:
-        """``{module_sn: module_type}`` of a multi-module device, from whichever API the flow is logged in to."""
+    async def _discover_modules(self, sn: str) -> list[tuple[str, str]]:
+        """``(module_type, module_sn)`` of a multi-module device, from whichever API the flow is logged in to."""
         from .api.private_api import EcoflowPrivateApiClient
         from .api.public_api import EcoflowPublicApiClient
 
@@ -194,10 +201,10 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
             # the app protocol has no REST quota call; ask the hub itself over MQTT
             reply = await self.auth.fetch_latest_quotas(sn)
             if reply is None:
-                return {}
+                return []
             return discover_modules(reply.get("quotaMap"), sn)
 
-        return {}
+        return []
 
     def remove_device(self, sn: str):
         # Get the device registry

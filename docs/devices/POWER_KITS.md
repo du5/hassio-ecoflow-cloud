@@ -6,9 +6,14 @@
 - Battery Level (`totalSoc`)
 - Total In Power (`totalInWatts`)
 - Total Out Power (`totalOutWatts`)
+- Total Current (`totalAmp`)
+- Remaining Time (`totalRemainTime`)
 - Total Full Capacity (`totalFullCap`)   _(disabled)_
 - Total Charge Discharge State (`totalChgDsgState`)   _(disabled)_
 - Charge Upper Limit (`bmsChgUpline`)   _(disabled)_
+- Discharge Lower Limit (`bmsDsgDownline`)   _(disabled)_
+- Generator Start Level (`oilStartDownline`)   _(disabled)_
+- Generator Stop Level (`oilStopUpline`)   _(disabled)_
 - Scene (`scenes`)   _(disabled)_
 - GPS Enabled (`gpsOn`)   _(disabled)_
 - GPS Connected (`gpsCon`)   _(disabled)_
@@ -49,9 +54,9 @@
 - Alt. Cable Length (`altCableLen`)
 - Alt. Cable Voltage Limit (`altVoltLmt`)
 - Alt. Voltage Limit En (`altVoltLmtEn`)
-
-*Switches*
-- Main DC Output (`not_existing` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "dischgParaSet", "params": {"swSta": 0}}`)
+- Alternator Mode (`alternatorMode`)   _(disabled)_
+- Third Input Power (`thirdWatts`)   _(disabled)_
+- Input Port Type (`setPortType`)   _(disabled)_
 
 ### bbcout
 
@@ -62,6 +67,15 @@
 - DC 1 Out Battery Current (`l1Curr`)   _(disabled)_
 - DC 2 Out Battery Current (`l2Curr`)   _(disabled)_
 - DC Out Battery Voltage (`batVol`)   _(disabled)_
+- DC Output Enabled (`dcOutSta`)
+- Beeper (`beepEn`)   _(disabled)_
+- DC Always On (`dcAlwaysOn`)   _(disabled)_
+- No Load Power (`noLoadPwr`)   _(disabled)_
+- Hub Work Mode (`hubWorkMode`)   _(disabled)_
+- DC Out Energy Today (`dayEnergy`)   _(disabled)_
+
+*Switches*
+- Main DC Output (`dcOutSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "dischgParaSet", "params": {"swSta": 0}}`)
 
 ### iclow
 
@@ -84,13 +98,8 @@
 - BMS Protect State (`protectState`)
 - BMS Battery Current (`batCurr`)   _(disabled)_
 - Fan Level (`fanLevel`)   _(disabled)_
-
-*Switches*
-- AC Output (`invSwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"powerOn": 0, "acCurrMaxSet": 255, "acChgDisa": 255, "acFrequencySet": 255, "acVolSet": 255}}`)
-- AC Charging (`chgDsgState` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": 255, "powerOn": 255, "acChgDisa": 1, "acFrequencySet": 255, "wakeup": 1, "standbyTime": 255, "acRlyCtrlDisable": 255, "acVolSet": 255, "passByMaxCurr": 255}}`)
-
-*Sliders (numbers)*
-- AC Charging Power (`NotExisting` -> `{"id": 123456789, "version": "1.0", "sn": "SN", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": "VALUE"}}` [0 - 16])
+- AC Always On (`acAlwaysOn`)   _(disabled)_
+- Inverter No Load Power (`invNoLoadPwr`)   _(disabled)_
 
 ### bpxxx
 
@@ -107,6 +116,19 @@
 - remaining time battery (SN) (`remainTime`)
 - maximum cell voltage battery (SN) (`maxCellVol`)
 - discharing power battery (SN) (`outWatts`)
+- State of Health (`soh`)
+- Design Capacity (`designCap`)   _(disabled)_
+- Cumulative Energy Charge (Wh) (`accuChgEnergy`)
+- Cumulative Energy Discharge (Wh) (`accuDsgEnergy`)
+- Cumulative Capacity Charge (mAh) (`accuChgCap`)   _(disabled)_
+- Cumulative Capacity Discharge (mAh) (`accuDsgCap`)   _(disabled)_
+- Max Cell Temperature (`maxCellTemp`)   _(disabled)_
+- Min Cell Temperature (`minCellTemp`)   _(disabled)_
+- Charge Limit (`chgSetSoc`)   _(disabled)_
+- Discharge Limit (`dsgSetSoc`)   _(disabled)_
+- Kit Number (`kitNum`)   _(disabled)_
+- Warning Code (`warnCode`)   _(disabled)_
+- BMS Fault (`bmsFault`)   _(disabled)_
 
 ### kitscc
 
@@ -173,6 +195,15 @@
 - DC Out Enabled (`dcChSta`)
 - DC Out Set Ch State (`dcSetChSta`)   _(disabled)_
 - DC Out Voltage (`dcInVol`)
+- DC Out 13 (`dcChWattV2[0]`)
+- DC Out 14 (`dcChWattV2[1]`)
+- DC Out 15 (`dcChWattV2[2]`)
+- DC Out 16 (`dcChWattV2[3]`)
+- DC Ampere Out 13 (`dcChCurV2[0]`)
+- DC Ampere Out 14 (`dcChCurV2[1]`)
+- DC Ampere Out 15 (`dcChCurV2[2]`)
+- DC Ampere Out 16 (`dcChCurV2[3]`)
+- DC Out 13-16 Ch Relay (`dcChRelayV2`)   _(disabled)_
 
 *Switches*
 - DC Switch 1 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
@@ -181,6 +212,12 @@
 - DC Switch 4 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
 - DC Switch 5 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
 - DC Switch 6 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 7 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 8 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 9 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 10 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 11 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
+- DC Switch 12 (`dcChRelay` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15362, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
 
 ### ichigh
 
@@ -202,9 +239,20 @@
 - AC Standby Time (`standbyTime`)   _(disabled)_
 - AC Input Day Power (`inputWhInDay`)   _(disabled)_
 - AC Output Day Power (`outputWhInDay`)   _(disabled)_
+- AC Out Apparent Power (`outVa`)
+- AC Charge Power (`chgWatts`)
+- AC Charge Current Limit (`appCfg.acMaxCurrSer`)   _(disabled)_
+- Bypass Current Limit (`appCfg.passByMaxCurr`)   _(disabled)_
+- AC Out Voltage Setting (`appCfg.acVolSet`)   _(disabled)_
+- AC Out Frequency Setting (`appCfg.acFreqSet`)   _(disabled)_
 
 *Switches*
 - Prioretize grid (`passByModeEn` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dsgIcParaSet", "params": {"dsgLowPwrEn": 255, "pfcDsgModeEn": 255, "passByCurrMax": 255, "passByModeEn": 2}}`)
+- AC Output (`invSwSta` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"powerOn": 0, "acCurrMaxSet": 255, "acChgDisa": 255, "acFrequencySet": 255, "acVolSet": 255}}`)
+- AC Charging (`appCfg.acChgDisable` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": 255, "powerOn": 255, "acChgDisa": 1, "acFrequencySet": 255, "wakeup": 1, "standbyTime": 255, "acRlyCtrlDisable": 255, "acVolSet": 255, "passByMaxCurr": 255}}`)
+
+*Sliders (numbers)*
+- AC Charging Power (`appCfg.acMaxCurrSer` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": "VALUE"}, "sn": "SN"}` [0 - 40])
 
 ### ldac
 
@@ -227,5 +275,8 @@
 - Distributer AC Temperature 1 (`acTemp1`)
 - Distributer AC Temperature 2 (`acTemp2`)
 - AC Charge State (`acChSta`)
+- AC L1 Power (`acTotalWatts1`)
+- AC L2 Power (`acTotalWatts2`)
+- AC L2 In Voltage (`acInVol2`)
 
 

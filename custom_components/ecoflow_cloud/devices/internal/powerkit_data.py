@@ -25,6 +25,16 @@ JSONDict = dict[str, Any]
 
 MAIN_BATTERY_OPERATE_TYPE = "mainBP"
 
+# Two modules can share one serial (the 2nd generation distribution box reports its AC
+# board as "ldac" and its DC board as "lddc" under the same serial). Sub devices are
+# listed by serial, so such modules get "<serial>#<module type>" as their list key.
+SN_TYPE_SEPARATOR = "#"
+
+
+def real_sn(sn: str) -> str:
+    """The module serial behind a sub device key, with any "#<module type>" suffix removed."""
+    return sn.split(SN_TYPE_SEPARATOR, 1)[0]
+
 
 def decode_module_payload(value: Any) -> Any:
     """Return the JSON value hidden in a double-encoded string, or the value itself."""
@@ -85,18 +95,18 @@ def quota_map_modules(quota_map: Any) -> dict[str, dict[str, JSONDict]]:
     return result
 
 
-def discover_modules(quota_map: Any, hub_sn: str) -> dict[str, str]:
-    """``{module_sn: module_type}`` for every module in a ``latestQuotas`` reply, except the hub itself.
+def discover_modules(quota_map: Any, hub_sn: str) -> list[tuple[str, str]]:
+    """``(module_type, module_sn)`` for every module in a ``latestQuotas`` reply, except the hub itself.
 
-    The hub's own ``wireless`` module reports under the hub serial and stays part of
-    the hub device.
+    The hub's own modules (``wireless``, ``gps``) report under the hub serial and stay
+    part of the hub device. A serial can appear with several module types.
     """
-    modules: dict[str, str] = {}
+    modules: list[tuple[str, str]] = []
     for module_type, by_sn in quota_map_modules(quota_map).items():
         for module_sn in by_sn:
-            if module_sn == hub_sn:
+            if module_sn == hub_sn or (module_type, module_sn) in modules:
                 continue
-            modules.setdefault(module_sn, module_type)
+            modules.append((module_type, module_sn))
     return modules
 
 
@@ -126,14 +136,25 @@ def hub_fields_from_message(message: JSONDict, hub_sn: str) -> JSONDict | None:
 
 
 def hub_quota_fields(quota_map: Any, hub_sn: str) -> JSONDict:
-    """Hub fields from a ``latestQuotas`` reply: the wireless module plus any ``total*`` value a battery carries."""
+    """Hub fields from a ``latestQuotas`` reply.
+
+    The hub owns the modules reporting under its own serial (``wireless``, ``gps``), the
+    system totals (``bmsTotal``, a flat entry without serials) and any ``total*`` value
+    the main battery carries.
+    """
     fields: JSONDict = {}
-    for module_type, by_sn in quota_map_modules(quota_map).items():
-        if module_type.startswith("bp"):
-            for module_fields in by_sn.values():
-                fields.update({k: v for k, v in module_fields.items() if k.startswith("total")})
-        if hub_sn in by_sn:
-            fields.update(by_sn[hub_sn])
+    if not isinstance(quota_map, dict):
+        return fields
+    for module_type, raw_value in quota_map.items():
+        value = decode_module_payload(raw_value)
+        if _is_module_map(value):
+            if str(module_type).startswith("bp"):
+                for module_fields in value.values():
+                    fields.update({k: v for k, v in module_fields.items() if k.startswith("total")})
+            if hub_sn in value:
+                fields.update(value[hub_sn])
+        elif isinstance(value, dict):
+            fields.update(value)
     return fields
 
 

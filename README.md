@@ -62,7 +62,9 @@ from Home Assistant.
   `48V全场景电源（5kVA）`): the developer platform answers every data request for it with error 1006, so use
   `private_api` with the device type `POWER_KITS` instead. Its batteries, BMS, MPPT, inverter and distribution
   panels are discovered as separate devices when the hub is added. The switches and sliders reuse the commands
-  EcoFlow documents for the 1st generation and have not been confirmed on a 2nd generation hub yet.
+  EcoFlow documents for the 1st generation and have not been confirmed on a 2nd generation hub yet. On the 2nd
+  generation AC/DC panel (EF-PK-005-2) DC circuits 1 to 12 are switchable, circuits 13 to 16 are read-only until
+  their command is known, and the AC branch circuits are breakers that cannot be switched remotely.
 
 ## Disclaimers
 
@@ -1784,7 +1786,7 @@ from Home Assistant.
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 171, switches: 10, sliders: 1)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 218, switches: 16, sliders: 1)</i> </summary>
 <p>
 
 ### hub
@@ -1793,9 +1795,14 @@ from Home Assistant.
 - Battery Level
 - Total In Power
 - Total Out Power
+- Total Current
+- Remaining Time
 - Total Full Capacity  _(disabled)_
 - Total Charge Discharge State  _(disabled)_
 - Charge Upper Limit  _(disabled)_
+- Discharge Lower Limit  _(disabled)_
+- Generator Start Level  _(disabled)_
+- Generator Stop Level  _(disabled)_
 - Scene  _(disabled)_
 - GPS Enabled  _(disabled)_
 - GPS Connected  _(disabled)_
@@ -1836,9 +1843,9 @@ from Home Assistant.
 - Alt. Cable Length
 - Alt. Cable Voltage Limit
 - Alt. Voltage Limit En
-
-*Switches*
-- Main DC Output
+- Alternator Mode  _(disabled)_
+- Third Input Power  _(disabled)_
+- Input Port Type  _(disabled)_
 
 ### bbcout
 
@@ -1849,6 +1856,15 @@ from Home Assistant.
 - DC 1 Out Battery Current  _(disabled)_
 - DC 2 Out Battery Current  _(disabled)_
 - DC Out Battery Voltage  _(disabled)_
+- DC Output Enabled
+- Beeper  _(disabled)_
+- DC Always On  _(disabled)_
+- No Load Power  _(disabled)_
+- Hub Work Mode  _(disabled)_
+- DC Out Energy Today  _(disabled)_
+
+*Switches*
+- Main DC Output
 
 ### iclow
 
@@ -1871,13 +1887,8 @@ from Home Assistant.
 - BMS Protect State
 - BMS Battery Current  _(disabled)_
 - Fan Level  _(disabled)_
-
-*Switches*
-- AC Output
-- AC Charging
-
-*Sliders (numbers)*
-- AC Charging Power
+- AC Always On  _(disabled)_
+- Inverter No Load Power  _(disabled)_
 
 ### bpxxx
 
@@ -1894,6 +1905,19 @@ from Home Assistant.
 - remaining time battery (SN)
 - maximum cell voltage battery (SN)
 - discharing power battery (SN)
+- State of Health
+- Design Capacity  _(disabled)_
+- Cumulative Energy Charge (Wh)
+- Cumulative Energy Discharge (Wh)
+- Cumulative Capacity Charge (mAh)  _(disabled)_
+- Cumulative Capacity Discharge (mAh)  _(disabled)_
+- Max Cell Temperature  _(disabled)_
+- Min Cell Temperature  _(disabled)_
+- Charge Limit  _(disabled)_
+- Discharge Limit  _(disabled)_
+- Kit Number  _(disabled)_
+- Warning Code  _(disabled)_
+- BMS Fault  _(disabled)_
 
 ### kitscc
 
@@ -1960,6 +1984,15 @@ from Home Assistant.
 - DC Out Enabled
 - DC Out Set Ch State  _(disabled)_
 - DC Out Voltage
+- DC Out 13
+- DC Out 14
+- DC Out 15
+- DC Out 16
+- DC Ampere Out 13
+- DC Ampere Out 14
+- DC Ampere Out 15
+- DC Ampere Out 16
+- DC Out 13-16 Ch Relay  _(disabled)_
 
 *Switches*
 - DC Switch 1
@@ -1968,6 +2001,12 @@ from Home Assistant.
 - DC Switch 4
 - DC Switch 5
 - DC Switch 6
+- DC Switch 7
+- DC Switch 8
+- DC Switch 9
+- DC Switch 10
+- DC Switch 11
+- DC Switch 12
 
 ### ichigh
 
@@ -1989,9 +2028,20 @@ from Home Assistant.
 - AC Standby Time  _(disabled)_
 - AC Input Day Power  _(disabled)_
 - AC Output Day Power  _(disabled)_
+- AC Out Apparent Power
+- AC Charge Power
+- AC Charge Current Limit  _(disabled)_
+- Bypass Current Limit  _(disabled)_
+- AC Out Voltage Setting  _(disabled)_
+- AC Out Frequency Setting  _(disabled)_
 
 *Switches*
 - Prioretize grid
+- AC Output
+- AC Charging
+
+*Sliders (numbers)*
+- AC Charging Power
 
 ### ldac
 
@@ -2014,6 +2064,9 @@ from Home Assistant.
 - Distributer AC Temperature 1
 - Distributer AC Temperature 2
 - AC Charge State
+- AC L1 Power
+- AC L2 Power
+- AC L2 In Voltage
 
 </p></details>
 
