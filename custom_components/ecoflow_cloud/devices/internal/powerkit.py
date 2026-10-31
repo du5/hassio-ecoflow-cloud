@@ -301,7 +301,8 @@ class PowerKit(PublicPowerKit):
         bypass: int | None = None,
     ) -> dict[str, Any]:
         """The app sends both AC current limits together; the charging current never exceeds the input one."""
-        app_cfg: dict[str, Any] = params.get("appCfg") if isinstance(params.get("appCfg"), dict) else {}
+        raw_cfg = params.get("appCfg")
+        app_cfg: dict[str, Any] = raw_cfg if isinstance(raw_cfg, dict) else {}
         charge_value = charge if charge is not None else app_cfg.get("acMaxCurrSer", 255)
         bypass_value = bypass if bypass is not None else app_cfg.get("passByMaxCurr", 255)
         if isinstance(charge_value, int) and isinstance(bypass_value, int) and 255 not in (charge_value, bypass_value):
