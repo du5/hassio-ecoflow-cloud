@@ -39,7 +39,9 @@ from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.text import TextEntity
 from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfFrequency, UnitOfPower
+from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.api.message import JSONMessage, Message
@@ -48,10 +50,12 @@ from custom_components.ecoflow_cloud.devices import EcoflowDeviceInfo, const
 from custom_components.ecoflow_cloud.devices.data_holder import PreparedData
 from custom_components.ecoflow_cloud.devices.internal.powerkit_data import (
     alias_request,
+    alias_set_command,
     hub_fields_from_message,
     hub_quota_fields,
     module_quota_fields,
-    parse_alias_reply,
+    parse_alias_entries,
+    parse_alias_set,
     parse_module_message,
     reply_online,
 )
@@ -264,11 +268,62 @@ class CircuitSwitchEntity(CircuitAliasMixin, BitMaskEnableEntity):
     pass
 
 
+class CircuitNameEntity(EcoFlowAbstractEntity, TextEntity):
+    """The name of a panel circuit as the app shows it; writing it renames the circuit in the app too.
+
+    The icon the owner picked for the circuit (``logoNum``) is kept as it is.
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:rename-box"
+    _attr_should_poll = False
+
+    def __init__(self, client: EcoflowApiClient, device: PowerKit, index: int, title: str) -> None:
+        super().__init__(client, device, title, f"circuitName.{index + 1}")
+        self._panel = device
+        self._index = index
+        self._attr_native_value = device.circuit_alias(index) or ""
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self._panel.add_alias_listener(self._alias_changed))
+        self._attr_native_value = self._panel.circuit_alias(self._index) or ""
+
+    def _alias_changed(self) -> None:
+        # called on the MQTT thread when the panel reports new names
+        value = self._panel.circuit_alias(self._index) or ""
+        if value != self._attr_native_value:
+            self._attr_native_value = value
+            self.schedule_update_ha_state()
+
+    def command_dict(self, value: str) -> dict[str, Any]:
+        command = alias_set_command(
+            self._panel.device_data.device_type,
+            self._panel.module_sn,
+            self._index,
+            value,
+            self._panel.circuit_logo(self._index),
+        )
+        if command is None:
+            raise ValueError(f"{self._panel.device_data.device_type} has no circuit names")
+        return {"id": 123456789, "version": "1.0", **command}
+
+    def set_value(self, value: str) -> None:
+        name = value.strip()
+        if not name:
+            return
+        self._client.send_set_message(self._device.device_data.sn, {}, self.command_dict(name))
+        # the board does not echo the name back: take it now so that the other entities follow
+        self._attr_native_value = name
+        self._panel.set_circuit_alias(self._index, name, self._panel.circuit_logo(self._index))
+
+
 class PowerKit(PublicPowerKit):
     def __init__(self, device_info: EcoflowDeviceInfo, device_data: DeviceData) -> None:
         super().__init__(device_info, device_data)
-        # the app's names for a panel board's circuits, in circuit order (see circuit_alias)
+        # the app's names and icons for a panel board's circuits, in circuit order (see circuit_alias)
         self.circuit_aliases: list[str] = []
+        self.circuit_logos: list[int] = []
         self._alias_listeners: list[Callable[[], None]] = []
         # the app addresses the DC panel's relays with module type 15368, not the documented 15362
         self.dcSwitchFunction = lambda sn, value: {
@@ -308,6 +363,12 @@ class PowerKit(PublicPowerKit):
             return self.circuit_aliases[index]
         return None
 
+    def circuit_logo(self, index: int) -> int:
+        """The app's icon number of circuit ``index`` (zero based), 0 when unknown."""
+        if 0 <= index < len(self.circuit_logos):
+            return self.circuit_logos[index]
+        return 0
+
     def add_alias_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
         """Call ``listener`` whenever the circuit names change; returns the remover."""
         self._alias_listeners.append(listener)
@@ -318,20 +379,50 @@ class PowerKit(PublicPowerKit):
 
         return remove
 
+    def set_circuit_alias(self, index: int, alias: str, logo: int) -> None:
+        """Take a name and icon for one circuit and tell the listeners when it changed."""
+        if index < 0:
+            return
+        if index >= len(self.circuit_aliases):
+            self.circuit_aliases += [""] * (index + 1 - len(self.circuit_aliases))
+        if index >= len(self.circuit_logos):
+            self.circuit_logos += [0] * (index + 1 - len(self.circuit_logos))
+        if (self.circuit_aliases[index], self.circuit_logos[index]) == (alias, logo):
+            return
+        self.circuit_aliases[index] = alias
+        self.circuit_logos[index] = logo
+        self._notify_alias_listeners()
+
+    def _notify_alias_listeners(self) -> None:
+        for listener in list(self._alias_listeners):
+            listener()
+
     @override
     def startup_set_messages(self) -> list[dict[str, Any]]:
         request = alias_request(self.device_data.device_type, self.module_sn)
         return [request] if request else []
 
     @override
+    def _prepare_data_set_topic(self, raw_data: bytes) -> PreparedData:
+        # a rename, by the app or by this integration, passes here before the board confirms it
+        data = self._prepare_data(raw_data)
+        renamed = parse_alias_set(data, self.device_data.device_type, self.module_sn)
+        if renamed is not None:
+            self.set_circuit_alias(*renamed)
+        return PreparedData(None, None, data)
+
+    @override
     def _prepare_data_set_reply_topic(self, raw_data: bytes) -> PreparedData:
         # the panel answers the alias request here, and again whenever the app asks for the names
         data = self._prepare_data(raw_data)
-        aliases = parse_alias_reply(data, self.device_data.device_type, self.module_sn)
-        if aliases is not None and aliases != self.circuit_aliases:
-            self.circuit_aliases = aliases
-            for listener in list(self._alias_listeners):
-                listener()
+        entries = parse_alias_entries(data, self.device_data.device_type, self.module_sn)
+        if entries is not None:
+            aliases = [alias for alias, _ in entries]
+            logos = [logo for _, logo in entries]
+            if aliases != self.circuit_aliases or logos != self.circuit_logos:
+                self.circuit_aliases = aliases
+                self.circuit_logos = logos
+                self._notify_alias_listeners()
         return PreparedData(None, None, data)
 
     def _named_circuit_sensors(self, client: EcoflowApiClient, sensors: list[SensorEntity]) -> list[SensorEntity]:
@@ -457,6 +548,15 @@ class PowerKit(PublicPowerKit):
         }
 
     # -------------------------------------------------------------- entities
+    @override
+    def texts(self, client: EcoflowApiClient) -> list[TextEntity]:
+        module_type = self.device_data.device_type
+        if module_type == "lddc":
+            return [CircuitNameEntity(client, self, i, f"DC Out {i + 1} Name") for i in range(DC_PANEL_CHANNELS)]
+        if module_type == "ldac":
+            return [CircuitNameEntity(client, self, i, f"AC Out {i + 1} Name") for i in range(AC_PANEL_CHANNELS)]
+        return []
+
     @override
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         if self.is_hub:

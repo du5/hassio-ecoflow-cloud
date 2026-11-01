@@ -169,39 +169,86 @@ def reply_online(reply: JSONDict) -> bool | None:
         return None
 
 
-# The app lets the owner name the circuits of a distribution panel. Each board answers one
-# request with the names of its circuits in circuit order.
-ALIAS_REQUESTS: dict[str, tuple[int, str]] = {
-    "lddc": (15368, "getDcAllAlias"),
-    "ldac": (15367, "getAcAllAlias"),
+# The app lets the owner name the circuits of a distribution panel and give each an icon
+# (``logoNum``). Each board answers one request with all its circuits in circuit order, and
+# takes one circuit at a time when a name is set: numeric module type, read and write operation,
+# all four captured from the app.
+ALIAS_OPERATIONS: dict[str, tuple[int, str, str]] = {
+    "lddc": (15368, "getDcAllAlias", "setDcChAlias"),
+    "ldac": (15367, "getAcAllAlias", "setAcChAlias"),
 }
 
 
 def alias_request(module_type: str, module_sn: str) -> JSONDict | None:
     """The command that asks a panel board for the names of its circuits, None for other modules."""
-    request = ALIAS_REQUESTS.get(module_type)
-    if request is None:
+    operations = ALIAS_OPERATIONS.get(module_type)
+    if operations is None:
         return None
-    numeric_type, operate_type = request
-    return {"moduleSn": module_sn, "moduleType": numeric_type, "operateType": operate_type, "params": {}}
+    numeric_type, read_operation, _ = operations
+    return {"moduleSn": module_sn, "moduleType": numeric_type, "operateType": read_operation, "params": {}}
 
 
-def parse_alias_reply(message: Any, module_type: str, module_sn: str) -> list[str] | None:
-    """The circuit names in a getDcAllAlias / getAcAllAlias reply for this board, else None.
+def alias_set_command(module_type: str, module_sn: str, index: int, alias: str, logo: int = 0) -> JSONDict | None:
+    """The command that names circuit ``index`` (zero based) of a panel board, None for other modules.
+
+    Captured on the AC board: ``{"operateType": "setAcChAlias", "params": {"id": 0,
+    "chAlias": {"logoNum": 2, "alias": "..."}}}``.
+    """
+    operations = ALIAS_OPERATIONS.get(module_type)
+    if operations is None:
+        return None
+    numeric_type, _, write_operation = operations
+    return {
+        "moduleSn": module_sn,
+        "moduleType": numeric_type,
+        "operateType": write_operation,
+        "params": {"id": index, "chAlias": {"logoNum": logo, "alias": alias}},
+    }
+
+
+def _alias_entry(entry: Any) -> tuple[str, int]:
+    if not isinstance(entry, dict):
+        return "", 0
+    alias = entry.get("alias")
+    logo = entry.get("logoNum")
+    return (str(alias).strip() if alias is not None else "", logo if isinstance(logo, int) else 0)
+
+
+def parse_alias_entries(message: Any, module_type: str, module_sn: str) -> list[tuple[str, int]] | None:
+    """The (name, icon) of every circuit in a getDcAllAlias / getAcAllAlias reply for this board, else None.
 
     A reply looks like ``{"operateType": "getDcAllAlias", "moduleSn": "M3L1...", "code": "0",
     "data": {"retSta": 0, "chAlias": [{"logoNum": 0, "alias": "DC CH1"}, ...]}}``.
     """
-    request = ALIAS_REQUESTS.get(module_type)
-    if request is None or not isinstance(message, dict):
+    operations = ALIAS_OPERATIONS.get(module_type)
+    if operations is None or not isinstance(message, dict):
         return None
-    if message.get("operateType") != request[1] or message.get("moduleSn") != module_sn:
+    if message.get("operateType") != operations[1] or message.get("moduleSn") != module_sn:
         return None
     data = message.get("data")
     if not isinstance(data, dict) or not isinstance(data.get("chAlias"), list):
         return None
-    aliases: list[str] = []
-    for entry in data["chAlias"]:
-        alias = entry.get("alias") if isinstance(entry, dict) else None
-        aliases.append(str(alias).strip() if alias is not None else "")
-    return aliases
+    return [_alias_entry(entry) for entry in data["chAlias"]]
+
+
+def parse_alias_reply(message: Any, module_type: str, module_sn: str) -> list[str] | None:
+    """The circuit names in a getDcAllAlias / getAcAllAlias reply for this board, else None."""
+    entries = parse_alias_entries(message, module_type, module_sn)
+    return None if entries is None else [alias for alias, _ in entries]
+
+
+def parse_alias_set(message: Any, module_type: str, module_sn: str) -> tuple[int, str, int] | None:
+    """(index, name, icon) of a setDcChAlias / setAcChAlias command for this board, else None.
+
+    The app publishes it on the set topic when the owner renames a circuit; so does this integration.
+    """
+    operations = ALIAS_OPERATIONS.get(module_type)
+    if operations is None or not isinstance(message, dict):
+        return None
+    if message.get("operateType") != operations[2] or message.get("moduleSn") != module_sn:
+        return None
+    params = message.get("params")
+    if not isinstance(params, dict) or not isinstance(params.get("id"), int) or isinstance(params["id"], bool):
+        return None
+    alias, logo = _alias_entry(params.get("chAlias"))
+    return params["id"], alias, logo

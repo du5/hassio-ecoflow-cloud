@@ -31,6 +31,7 @@ _PLATFORMS = {
     Platform.SENSOR,
     Platform.SWITCH,
     Platform.CLIMATE,
+    Platform.TEXT,
 }
 
 ATTR_STATUS_SN = "SN"

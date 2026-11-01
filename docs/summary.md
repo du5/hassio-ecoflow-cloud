@@ -1714,7 +1714,7 @@
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 5)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 5, texts: 22)</i> </summary>
 <p>
 
 ### hub
@@ -1963,6 +1963,24 @@
 - DC Switch 15
 - DC Switch 16
 
+*Texts*
+- DC Out 1 Name
+- DC Out 2 Name
+- DC Out 3 Name
+- DC Out 4 Name
+- DC Out 5 Name
+- DC Out 6 Name
+- DC Out 7 Name
+- DC Out 8 Name
+- DC Out 9 Name
+- DC Out 10 Name
+- DC Out 11 Name
+- DC Out 12 Name
+- DC Out 13 Name
+- DC Out 14 Name
+- DC Out 15 Name
+- DC Out 16 Name
+
 ### ichigh
 
 *Sensors*
@@ -2021,6 +2039,14 @@
 - AC L1 Power
 - AC L2 Power
 - AC L2 In Voltage
+
+*Texts*
+- AC Out 1 Name
+- AC Out 2 Name
+- AC Out 3 Name
+- AC Out 4 Name
+- AC Out 5 Name
+- AC Out 6 Name
 
 </p></details>
 

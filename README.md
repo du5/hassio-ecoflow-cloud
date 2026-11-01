@@ -66,7 +66,8 @@ from Home Assistant.
   (EF-PK-O05-2), the DC port modes, the AC current limits, grid priority, the beeper and the DC output voltage were
   captured from the EcoFlow app on a 2nd generation hub; only the AC output switch is not confirmed yet. The AC
   branch circuits are breakers that cannot be switched remotely. The panel's circuit entities take the names
-  given to the circuits in the app. The AC output and grid priority switches are disabled by default because
+  given to the circuits in the app, and a text entity per circuit renames it from Home Assistant. The AC output
+  and grid priority switches are disabled by default because
   switching them remotely can cut the hub's own internet uplink.
   Component names, specifications, module map and units of the 2nd generation kit:
   [docs/power_kits_2nd_gen.md](docs/power_kits_2nd_gen.md).
@@ -1791,7 +1792,7 @@ from Home Assistant.
 
 </p></details>
 
-<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 5)</i> </summary>
+<details><summary> POWER_KITS <i>(sensors: 216, switches: 24, sliders: 4, selects: 5, texts: 22)</i> </summary>
 <p>
 
 ### hub
@@ -2040,6 +2041,24 @@ from Home Assistant.
 - DC Switch 15
 - DC Switch 16
 
+*Texts*
+- DC Out 1 Name
+- DC Out 2 Name
+- DC Out 3 Name
+- DC Out 4 Name
+- DC Out 5 Name
+- DC Out 6 Name
+- DC Out 7 Name
+- DC Out 8 Name
+- DC Out 9 Name
+- DC Out 10 Name
+- DC Out 11 Name
+- DC Out 12 Name
+- DC Out 13 Name
+- DC Out 14 Name
+- DC Out 15 Name
+- DC Out 16 Name
+
 ### ichigh
 
 *Sensors*
@@ -2098,6 +2117,14 @@ from Home Assistant.
 - AC L1 Power
 - AC L2 Power
 - AC L2 In Voltage
+
+*Texts*
+- AC Out 1 Name
+- AC Out 2 Name
+- AC Out 3 Name
+- AC Out 4 Name
+- AC Out 5 Name
+- AC Out 6 Name
 
 </p></details>
 

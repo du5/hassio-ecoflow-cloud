@@ -246,6 +246,24 @@
 - DC Switch 15 (`dcChRelayV2` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
 - DC Switch 16 (`dcChRelayV2` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "chSwitch", "params": {"bitsSwSta": "VALUE"}}`)
 
+*Texts*
+- DC Out 1 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 0, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 2 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 1, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 3 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 2, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 4 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 3, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 5 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 4, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 6 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 5, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 7 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 6, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 8 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 7, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 9 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 8, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 10 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 9, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 11 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 10, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 12 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 11, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 13 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 12, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 14 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 13, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 15 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 14, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- DC Out 16 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15368, "operateType": "setDcChAlias", "params": {"id": 15, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+
 ### ichigh
 
 *Sensors*
@@ -304,5 +322,13 @@
 - AC L1 Power (`acTotalWatts1`)
 - AC L2 Power (`acTotalWatts2`)
 - AC L2 In Voltage (`acInVol2`)
+
+*Texts*
+- AC Out 1 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15367, "operateType": "setAcChAlias", "params": {"id": 0, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- AC Out 2 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15367, "operateType": "setAcChAlias", "params": {"id": 1, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- AC Out 3 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15367, "operateType": "setAcChAlias", "params": {"id": 2, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- AC Out 4 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15367, "operateType": "setAcChAlias", "params": {"id": 3, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- AC Out 5 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15367, "operateType": "setAcChAlias", "params": {"id": 4, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
+- AC Out 6 Name (`{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15367, "operateType": "setAcChAlias", "params": {"id": 5, "chAlias": {"logoNum": 0, "alias": "VALUE"}}}`)
 
 

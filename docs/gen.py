@@ -181,6 +181,7 @@ class DocumentationGenerator:
         total_switches = 0
         total_numbers = 0
         total_selects = 0
+        total_texts = 0
         for device in base_devices:
             client = Mock()
             client.device = device
@@ -189,6 +190,7 @@ class DocumentationGenerator:
             total_switches += len(device.switches(client))
             total_numbers += len(device.numbers(client))
             total_selects += len(device.selects(client))
+            total_texts += len(device.texts(client))
 
         parts = []
         if total_sensors > 0:
@@ -201,6 +203,8 @@ class DocumentationGenerator:
             parts.append(f"sliders: {total_numbers}")
         if total_selects > 0:
             parts.append(f"selects: {total_selects}")
+        if total_texts > 0:
+            parts.append(f"texts: {total_texts}")
 
         return ", ".join(parts)
 
@@ -316,6 +320,13 @@ class MarkdownRenderer:
         """Prepare options string for display."""
         return ", ".join([f"{k} ({v})" for k, v in options.items()])
 
+    def _replace_marker(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: self._replace_marker(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._replace_marker(v) for v in value]
+        return "VALUE" if value == MARKER_VALUE else value
+
     def prepare_command(self, e: EcoFlowBaseCommandEntity) -> str:
         """Prepare command string for display."""
         command_dict = self.sample_command(e)
@@ -422,6 +433,15 @@ class MarkdownRenderer:
                 self.prepare_options(sw.options_dict()),
             )
 
+    def render_text(self, sw: Any, brief: bool = False) -> str:
+        """Render text entity to markdown; its value sits inside a nested params object."""
+        if brief:
+            return f"- {sw.name}"
+        command = self.sample_command(sw)
+        if not isinstance(command, dict):
+            return f"- {sw.name}"
+        return f"- {sw.name} (`{json.dumps(self._replace_marker(command))}`)"
+
     def render_device_summary(self, device: BaseDevice, brief: bool = False) -> str:
         """Render complete device summary to markdown."""
         client = Mock()
@@ -457,6 +477,12 @@ class MarkdownRenderer:
             res += "\n*Selects*\n"
             for sw in selects:
                 res += self.render_select(sw, brief) + "\n"
+
+        texts = device.texts(client)
+        if len(texts) > 0:
+            res += "\n*Texts*\n"
+            for sw in texts:
+                res += self.render_text(sw, brief) + "\n"
 
         return res
 

@@ -11,6 +11,7 @@ from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.text import TextEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
 
@@ -123,6 +124,9 @@ class BaseDevice(ABC):
         return []
 
     def buttons(self, client: EcoflowApiClient) -> Sequence[ButtonEntity]:
+        return []
+
+    def texts(self, client: EcoflowApiClient) -> Sequence[TextEntity]:
         return []
 
     def update_data(self, raw_data: bytes, data_type: str) -> bool:
