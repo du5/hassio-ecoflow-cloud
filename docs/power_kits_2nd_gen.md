@@ -190,7 +190,7 @@ App 协议把一套系统拆成若干模块上报，每个模块在 Home Assista
 | --- | --- | --- | --- | --- |
 | 主直流输出 | bbcout | 15363 | dischgParaSet | `swSta` 1/0，其余字段 255 或 65535 表示不改 |
 | 蜂鸣器 | bbcout | 15363 | dischgParaSet | `beepEn` 1/0 |
-| 直流输出 12/24V | bbcout | 15363 | dischgParaSet | `volTag` 0/1，状态在 `cfgVolTag`；0 是出厂默认，推断为 12 V |
+| 直流输出 12/24V | bbcout | 15363 | dischgParaSet | `volTag` 0 = 12 V、1 = 24 V（实测），状态在 `cfgVolTag` |
 | 市电优先 / 电池优先 | iclow | 15365 | dsgIcParaSet | `passByModeEn` 1 市电优先 / 2 电池优先，其余字段 255 或 65535 |
 | 端口 1 充电 | bbcin | 15362 | chgParaSet | `chgPause` 1 暂停 / 0 恢复 |
 | 端口 1 充电模式 | bbcin | 15362 | chgParaSet | `setPortType` 0 自动 / 1 行车发电机 / 2 太阳能 |
@@ -211,7 +211,7 @@ App 打开期间每 10 秒向 bbcout 发一条 `hubExitLsp: 1` 的 dischgParaSet
 ## 已知限制
 
 - 交流输出开关尚未抓到 App 的原始命令，它是交流充电开关所用消息里的 `powerOn` 字段。
-- 直流输出 12/24V 选择默认停用：切到 24 V 可能损坏接在直流回路上的 12 V 负载，App 切换时会要求确认，HA 不会。`volTag` 0 对应 12 V 是按出厂默认推断的，第一次使用请对照 App 核对。
+- 直流输出 12/24V 选择默认停用：切到 24 V 可能损坏接在直流回路上的 12 V 负载，App 切换时会要求确认，HA 不会。App 里直流输出还有 48V 一档，它的命令尚未抓包，集成暂未提供。
 - 两个交流电流滑块的范围取自 230 V 版主机的 App（充电 2–20 A，输入 2–50 A）；把充电电流设得高于输入电流时，集成会按输入电流封顶，和 App 一致。
 - 配电盘各回路在 App 里起的别名（`getAcAllAlias` / `getDcAllAlias`）暂未用于实体命名。
 - App 和监控屏都能设的行车充电输入电流（`chgParaSet` 的 `maxChgCurr`）、怠速充电开关尚未抓包，集成暂未提供。

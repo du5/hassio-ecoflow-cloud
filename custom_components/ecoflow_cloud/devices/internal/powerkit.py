@@ -99,7 +99,7 @@ _ALTERNATOR_TYPES = {"Generic": 0, "48V Excited": 1}
 AC_CHARGE_CURRENT_RANGE = (2, 20)
 AC_INPUT_CURRENT_RANGE = (2, 50)
 
-# volTag of the main DC output; 0 is the hub's default and the 12 V setting of a 12 V kit
+# volTag of the main DC output, captured from the app: 0 is 12 V, 1 is 24 V
 _DC_OUTPUT_VOLTAGES = {"12V": 0, "24V": 1}
 DC_PANEL_SWITCHES = 12  # channels in the dcChRelay bitmask; dcChRelayV2 carries the remaining four
 
