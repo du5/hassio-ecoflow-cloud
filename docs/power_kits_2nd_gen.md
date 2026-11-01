@@ -203,7 +203,7 @@ App 协议把一套系统拆成若干模块上报，每个模块在 Home Assista
 | 直流回路 F1–F16 | 配电盘 | 15368 | chSwitch | `bitsSwSta`：开 128+序号-1，关 序号-1 |
 | 读取直流回路名字 | 配电盘 | 15368 | getDcAllAlias | 空 `params`；回复 `data.chAlias` 是 16 个 `{logoNum, alias}`，按回路顺序 |
 | 读取交流回路名字 | 配电盘 | 15367 | getAcAllAlias | 空 `params`；回复 `data.chAlias` 是 6 个 `{logoNum, alias}`，按断路器位顺序 |
-| 改直流回路名字 | 配电盘 | 15368 | setDcChAlias | `id` 回路序号（从 0 起，F16 是 15），`chAlias` 为 `{logoNum, alias}`；回复 `retSta` 0 |
+| 改直流回路名字 | 配电盘 | 15368 | setDcChAlias | `id` 回路序号（从 0 起，F16 是 15），`chAlias` 为 `{logoNum, alias}`，名字最长 24 字节 UTF-8（24 个英文数字或 8 个汉字）；回复 `retSta` 0 |
 | 改交流回路名字 | 配电盘 | 15367 | setAcChAlias | 同上，`id` 0–5 |
 
 回路图标 `logoNum` 在 App 里按板分别取值。交流：0 扳手、1 微波炉、2 饮水机、3 插座、4 咖啡机、5 GFCI 插座图标、6 电磁炉。
@@ -221,6 +221,6 @@ App 打开期间每 10 秒向 bbcout 发一条 `hubExitLsp: 1` 的 dischgParaSet
 - 交流输出开关尚未抓到 App 的原始命令，它是交流充电开关所用消息里的 `powerOn` 字段。
 - 直流输出 12/24V 选择默认停用：切到 24 V 可能损坏接在直流回路上的 12 V 负载，App 切换时会要求确认，HA 不会。App 直流页的另一个页签“48V”是主机的 48V DC OUT 端子口（接第三方 48 V 设备，不经配电盒，输出就是电池母线电压），页面上只有功率和状态点，没有电压可选，也没看到开关；配电盒那一路只能在 12V 和 24V 之间选。48V 口的功率对应哪个字段还没确认，实测时该口没接负载。
 - 两个交流电流滑块的范围取自 230 V 版主机的 App（充电 2–20 A，输入 2–50 A）；把充电电流设得高于输入电流时，集成会按输入电流封顶，和 App 一致。
-- 配电盘回路的实体名字跟着 App 里起的名字走：集成启动时向两块板各发一次 `getDcAllAlias` / `getAcAllAlias`，之后 App 每次读取名字的回复也会被采用。实体 ID 仍按默认标题（DC Out 3、DC Switch 3 等）生成，改名不会换 ID；显示名会变成"书房灯 Power"、"NAS Current"、"DC CH3"这样。每路还有一个配置类的文本实体（DC Out 3 Name、AC Out 6 Name 这样），在 HA 里改它就是在 App 里改名（`setDcChAlias` / `setAcChAlias`），图标沿用原来的；在 App 里改名，集成看到那条命令也会马上跟上。
+- 配电盘回路的实体名字跟着 App 里起的名字走：集成启动时向两块板各发一次 `getDcAllAlias` / `getAcAllAlias`，之后 App 每次读取名字的回复也会被采用。实体 ID 仍按默认标题（DC Out 3、DC Switch 3 等）生成，改名不会换 ID；显示名会变成"书房灯 Power"、"NAS Current"、"DC CH3"这样。每路还有一个配置类的文本实体（DC Out 3 Name、AC Out 6 Name 这样），在 HA 里改它就是在 App 里改名（`setDcChAlias` / `setAcChAlias`），图标沿用原来的，超过 24 字节 UTF-8 的名字会被拒绝；在 App 里改名，集成看到那条命令也会马上跟上。
 - 交流输出和市电优先两个开关默认停用，要用先在 HA 的实体设置里启用：前者会切断接在交流输出上的路由器，后者在实测中切换后也让交流输出断开，都只能到现场恢复。
 - App 和监控屏都能设的行车充电输入电流（`chgParaSet` 的 `maxChgCurr`，实测 `chgMaxCurr` 60000 即 60 A）、怠速充电开关尚未抓包；没有接行车发电机的家用系统在 App 里找不到这两项，集成暂未提供。

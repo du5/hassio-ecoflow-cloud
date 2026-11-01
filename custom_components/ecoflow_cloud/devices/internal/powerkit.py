@@ -41,6 +41,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.text import TextEntity
 from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfFrequency, UnitOfPower
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity import EntityCategory
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
@@ -112,6 +113,8 @@ AC_INPUT_CURRENT_RANGE = (2, 50)
 _DC_OUTPUT_VOLTAGES = {"12V": 0, "24V": 1}
 DC_PANEL_SWITCHES = 12  # channels in the dcChRelay bitmask; dcChRelayV2 carries the remaining four
 AC_PANEL_CHANNELS = 6  # breaker positions the AC board reports
+# the app accepts 24 letters or digits, or 8 Chinese characters, for a circuit name: 24 bytes of UTF-8
+CIRCUIT_NAME_MAX_BYTES = 24
 # the public per-circuit sensors: dcChWatt[3], acChCur[0], ...
 _CIRCUIT_KEY = re.compile(r"^(?P<board>dc|ac)Ch(?P<kind>Watt|Cur)\[(?P<index>\d+)\]$")
 
@@ -276,6 +279,7 @@ class CircuitNameEntity(EcoFlowAbstractEntity, TextEntity):
 
     _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:rename-box"
+    _attr_native_max = CIRCUIT_NAME_MAX_BYTES
     _attr_should_poll = False
 
     def __init__(self, client: EcoflowApiClient, device: PowerKit, index: int, title: str) -> None:
@@ -312,6 +316,11 @@ class CircuitNameEntity(EcoFlowAbstractEntity, TextEntity):
         name = value.strip()
         if not name:
             return
+        if len(name.encode("utf-8")) > CIRCUIT_NAME_MAX_BYTES:
+            raise ServiceValidationError(
+                f"A circuit name holds at most {CIRCUIT_NAME_MAX_BYTES} bytes of UTF-8 "
+                f"(24 letters or digits, 8 Chinese characters): {name!r} is too long"
+            )
         self._client.send_set_message(self._device.device_data.sn, {}, self.command_dict(name))
         # the board does not echo the name back: take it now so that the other entities follow
         self._attr_native_value = name
