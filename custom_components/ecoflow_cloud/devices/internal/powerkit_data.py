@@ -167,3 +167,41 @@ def reply_online(reply: JSONDict) -> bool | None:
         return int(value) == 1
     except TypeError, ValueError:
         return None
+
+
+# The app lets the owner name the circuits of a distribution panel. Each board answers one
+# request with the names of its circuits in circuit order.
+ALIAS_REQUESTS: dict[str, tuple[int, str]] = {
+    "lddc": (15368, "getDcAllAlias"),
+    "ldac": (15367, "getAcAllAlias"),
+}
+
+
+def alias_request(module_type: str, module_sn: str) -> JSONDict | None:
+    """The command that asks a panel board for the names of its circuits, None for other modules."""
+    request = ALIAS_REQUESTS.get(module_type)
+    if request is None:
+        return None
+    numeric_type, operate_type = request
+    return {"moduleSn": module_sn, "moduleType": numeric_type, "operateType": operate_type, "params": {}}
+
+
+def parse_alias_reply(message: Any, module_type: str, module_sn: str) -> list[str] | None:
+    """The circuit names in a getDcAllAlias / getAcAllAlias reply for this board, else None.
+
+    A reply looks like ``{"operateType": "getDcAllAlias", "moduleSn": "M3L1...", "code": "0",
+    "data": {"retSta": 0, "chAlias": [{"logoNum": 0, "alias": "DC CH1"}, ...]}}``.
+    """
+    request = ALIAS_REQUESTS.get(module_type)
+    if request is None or not isinstance(message, dict):
+        return None
+    if message.get("operateType") != request[1] or message.get("moduleSn") != module_sn:
+        return None
+    data = message.get("data")
+    if not isinstance(data, dict) or not isinstance(data.get("chAlias"), list):
+        return None
+    aliases: list[str] = []
+    for entry in data["chAlias"]:
+        alias = entry.get("alias") if isinstance(entry, dict) else None
+        aliases.append(str(alias).strip() if alias is not None else "")
+    return aliases

@@ -31,7 +31,9 @@ field of the message the AC charging switch uses.
 """
 
 import logging
-from typing import Any, override
+import re
+from collections.abc import Callable
+from typing import Any, Self, override
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
@@ -45,12 +47,15 @@ from custom_components.ecoflow_cloud.device_data import DeviceData
 from custom_components.ecoflow_cloud.devices import EcoflowDeviceInfo, const
 from custom_components.ecoflow_cloud.devices.data_holder import PreparedData
 from custom_components.ecoflow_cloud.devices.internal.powerkit_data import (
+    alias_request,
     hub_fields_from_message,
     hub_quota_fields,
     module_quota_fields,
+    parse_alias_reply,
     parse_module_message,
     reply_online,
 )
+from custom_components.ecoflow_cloud.entities import EcoFlowAbstractEntity, EcoFlowDictEntity
 from custom_components.ecoflow_cloud.devices.public.powerkit import BitMaskEnableEntity
 from custom_components.ecoflow_cloud.devices.public.powerkit import PowerKit as PublicPowerKit
 from custom_components.ecoflow_cloud.number import (
@@ -102,6 +107,9 @@ AC_INPUT_CURRENT_RANGE = (2, 50)
 # volTag of the main DC output, captured from the app: 0 is 12 V, 1 is 24 V
 _DC_OUTPUT_VOLTAGES = {"12V": 0, "24V": 1}
 DC_PANEL_SWITCHES = 12  # channels in the dcChRelay bitmask; dcChRelayV2 carries the remaining four
+AC_PANEL_CHANNELS = 6  # breaker positions the AC board reports
+# the public per-circuit sensors: dcChWatt[3], acChCur[0], ...
+_CIRCUIT_KEY = re.compile(r"^(?P<board>dc|ac)Ch(?P<kind>Watt|Cur)\[(?P<index>\d+)\]$")
 
 # the app sends every parameter of a group and marks the unchanged ones
 _UNCHANGED = 255
@@ -205,9 +213,63 @@ class TotalCurrentSensorEntity(AmpSensorEntity):
         return super()._update_value(ival / 10)
 
 
+class CircuitAliasMixin(EcoFlowAbstractEntity):
+    """Names a panel circuit's entity after the alias the owner gave it in the app.
+
+    The default title is what the entity is registered with, so the entity id stays stable;
+    the alias replaces the display name once the entity is added and follows later changes.
+    """
+
+    _circuit_index: int = -1
+    _title_template: str = "{alias}"
+    _default_title: str = ""
+
+    def for_circuit(self, index: int, template: str = "{alias}") -> Self:
+        """``index`` is zero based; ``template`` formats the alias into the title."""
+        self._circuit_index = index
+        self._title_template = template
+        self._default_title = self._attr_name
+        return self
+
+    def _apply_alias(self) -> bool:
+        device = self._device
+        alias = device.circuit_alias(self._circuit_index) if isinstance(device, PowerKit) else None
+        title = self._title_template.format(alias=alias) if alias else self._default_title
+        if title == self._attr_name:
+            return False
+        self._attr_name = title
+        return True
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if isinstance(self._device, PowerKit):
+            self.async_on_remove(self._device.add_alias_listener(self._alias_changed))
+        self._apply_alias()
+
+    def _alias_changed(self) -> None:
+        # called on the MQTT thread when the panel reports new names
+        if self._apply_alias():
+            self.schedule_update_ha_state()
+
+
+class CircuitWattsSensorEntity(CircuitAliasMixin, OutWattsSensorEntity):
+    pass
+
+
+class CircuitAmpSensorEntity(CircuitAliasMixin, OutMilliampSensorEntity):
+    pass
+
+
+class CircuitSwitchEntity(CircuitAliasMixin, BitMaskEnableEntity):
+    pass
+
+
 class PowerKit(PublicPowerKit):
     def __init__(self, device_info: EcoflowDeviceInfo, device_data: DeviceData) -> None:
         super().__init__(device_info, device_data)
+        # the app's names for a panel board's circuits, in circuit order (see circuit_alias)
+        self.circuit_aliases: list[str] = []
+        self._alias_listeners: list[Callable[[], None]] = []
         # the app addresses the DC panel's relays with module type 15368, not the documented 15362
         self.dcSwitchFunction = lambda sn, value: {
             "id": 123456789,
@@ -238,6 +300,55 @@ class PowerKit(PublicPowerKit):
                 "params": {},
             }
         )
+
+    # -------------------------------------------------------- circuit names
+    def circuit_alias(self, index: int) -> str | None:
+        """The app's name of circuit ``index`` (zero based), None when unknown or empty."""
+        if 0 <= index < len(self.circuit_aliases) and self.circuit_aliases[index]:
+            return self.circuit_aliases[index]
+        return None
+
+    def add_alias_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Call ``listener`` whenever the circuit names change; returns the remover."""
+        self._alias_listeners.append(listener)
+
+        def remove() -> None:
+            if listener in self._alias_listeners:
+                self._alias_listeners.remove(listener)
+
+        return remove
+
+    @override
+    def startup_set_messages(self) -> list[dict[str, Any]]:
+        request = alias_request(self.device_data.device_type, self.module_sn)
+        return [request] if request else []
+
+    @override
+    def _prepare_data_set_reply_topic(self, raw_data: bytes) -> PreparedData:
+        # the panel answers the alias request here, and again whenever the app asks for the names
+        data = self._prepare_data(raw_data)
+        aliases = parse_alias_reply(data, self.device_data.device_type, self.module_sn)
+        if aliases is not None and aliases != self.circuit_aliases:
+            self.circuit_aliases = aliases
+            for listener in list(self._alias_listeners):
+                listener()
+        return PreparedData(None, None, data)
+
+    def _named_circuit_sensors(self, client: EcoflowApiClient, sensors: list[SensorEntity]) -> list[SensorEntity]:
+        """The public per-circuit sensors, rebuilt so that they take the app's circuit names."""
+        named: list[SensorEntity] = []
+        for sensor in sensors:
+            match = _CIRCUIT_KEY.match(sensor.mqtt_key) if isinstance(sensor, EcoFlowDictEntity) else None
+            if match is None:
+                named.append(sensor)
+                continue
+            index = int(match.group("index"))
+            key, title = match.group(0), sensor.title()
+            if match.group("kind") == "Watt":
+                named.append(CircuitWattsSensorEntity(client, self, key, title).for_circuit(index, "{alias} Power"))
+            else:
+                named.append(CircuitAmpSensorEntity(client, self, key, title).for_circuit(index, "{alias} Current"))
+        return named
 
     # ------------------------------------------------------------------ data
     @override
@@ -390,6 +501,7 @@ class PowerKit(PublicPowerKit):
                 ).with_unit_of_measurement(UnitOfFrequency.HERTZ),
             ]
         elif module_type == "ldac":
+            sensors = self._named_circuit_sensors(client, sensors)
             # the 2nd generation panel feeds two AC buses (L1 / L2 for split phase)
             sensors += [
                 OutWattsSensorEntity(client, self, "acTotalWatts1", "AC L1 Power"),
@@ -397,15 +509,20 @@ class PowerKit(PublicPowerKit):
                 OutMilliVoltSensorEntity(client, self, "acInVol2", "AC L2 In Voltage"),
             ]
         elif module_type == "lddc":
+            sensors = self._named_circuit_sensors(client, sensors)
             # the 2nd generation panel has 16 DC circuits: dcChWatt carries 12, the high current
             # circuits come in a second set of arrays (F13 to F16 as far as the data shows)
             sensors += [
-                OutWattsSensorEntity(client, self, f"dcChWattV2[{i}]", f"DC Out {DC_PANEL_SWITCHES + i + 1}")
-                for i in range(4)
+                CircuitWattsSensorEntity(
+                    client, self, f"dcChWattV2[{i}]", f"DC Out {DC_PANEL_SWITCHES + i + 1}"
+                ).for_circuit(DC_PANEL_SWITCHES + i, "{alias} Power")
+                for i in range(DC_PANEL_CHANNELS - DC_PANEL_SWITCHES)
             ]
             sensors += [
-                OutMilliampSensorEntity(client, self, f"dcChCurV2[{i}]", f"DC Ampere Out {DC_PANEL_SWITCHES + i + 1}")
-                for i in range(4)
+                CircuitAmpSensorEntity(
+                    client, self, f"dcChCurV2[{i}]", f"DC Ampere Out {DC_PANEL_SWITCHES + i + 1}"
+                ).for_circuit(DC_PANEL_SWITCHES + i, "{alias} Current")
+                for i in range(DC_PANEL_CHANNELS - DC_PANEL_SWITCHES)
             ]
             sensors.append(MiscSensorEntity(client, self, "dcChRelayV2", "DC Out 13-16 Ch Relay", False))
         elif module_type == "bbcin":
@@ -465,6 +582,8 @@ class PowerKit(PublicPowerKit):
         if module_type == "ichigh":
             return [
                 # the inverter settings are read on ichigh; the app sets them through iclow
+                # disabled by default: switching the priority while on shore power dropped the AC output
+                # of the hub this was captured on, and the owner had to press the hub's AC button
                 EnabledEntity(
                     client,
                     self,
@@ -478,9 +597,11 @@ class PowerKit(PublicPowerKit):
                         "operateType": "dsgIcParaSet",
                         "params": {**_GRID_PRIORITY_PARAMS, "passByModeEn": 1 if value == 1 else 2},
                     },
+                    enabled=False,
                     enableValue=1,
                     disableValue=2,
                 ),
+                # disabled by default: cutting the AC output remotely cuts whatever keeps the hub online
                 EnabledEntity(
                     client,
                     self,
@@ -496,6 +617,7 @@ class PowerKit(PublicPowerKit):
                             "acVolSet": 255,
                         },
                     ),
+                    enabled=False,
                     enableValue=1,
                 ),
                 EnabledEntity(
@@ -584,18 +706,18 @@ class PowerKit(PublicPowerKit):
             ]
         if module_type == "lddc":
             switches: list[SwitchEntity] = [
-                BitMaskEnableEntity(
+                CircuitSwitchEntity(
                     client,
                     self,
                     f"dcChRelay.{n}",
                     f"DC Switch {n}",
                     self.dcSwitchFunction,
                     bits=DC_PANEL_SWITCHES,
-                )
+                ).for_circuit(n - 1)
                 for n in range(1, DC_PANEL_SWITCHES + 1)
             ]
             switches += [
-                BitMaskEnableEntity(
+                CircuitSwitchEntity(
                     client,
                     self,
                     f"dcChRelayV2.{n - DC_PANEL_SWITCHES}",
@@ -603,7 +725,7 @@ class PowerKit(PublicPowerKit):
                     self.dcSwitchFunction,
                     bits=DC_PANEL_CHANNELS - DC_PANEL_SWITCHES,
                     command_index=n - 1,
-                )
+                ).for_circuit(n - 1)
                 for n in range(DC_PANEL_SWITCHES + 1, DC_PANEL_CHANNELS + 1)
             ]
             return switches

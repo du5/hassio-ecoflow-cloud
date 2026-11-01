@@ -92,6 +92,9 @@ class EcoflowPrivateApiClient(EcoflowApiClient):
 
         requested_topics: set[str | None] = set()
         for sn, device in target_devices.items():
+            # settings the quotas do not carry (e.g. the names of a panel's circuits)
+            for message in device.startup_set_messages():
+                self.mqtt_client.publish(device.device_info.set_topic, JSONMessage(message).to_mqtt_payload())
             # sub devices (Power Kits modules) share their parent's topics: one latestQuotas serves them all
             if device.device_info.get_topic in requested_topics:
                 continue

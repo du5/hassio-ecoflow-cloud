@@ -98,6 +98,11 @@ class BaseDevice(ABC):
     def extract_quota_data(self, message: JSONDict) -> PreparedData | None:
         return None
 
+    def startup_set_messages(self) -> list[JSONDict]:
+        """Commands the client publishes on the set topic once after connecting, to read settings
+        that the quotas do not carry. Override in subclasses."""
+        return []
+
     @abstractmethod
     def sensors(self, client: EcoflowApiClient) -> Sequence[SensorEntity]:
         pass
